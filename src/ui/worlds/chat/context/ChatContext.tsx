@@ -5,6 +5,7 @@ import type { ChatAttachment, ChatCardReference, ChatMessage, ChatMessageVoiceCa
 import type { PolarisToolPromptGroup } from '../../../../engines/tool-protocol/assistantToolProtocolTypes';
 import type { ChatCommandStatus, ChatEditingState, ChatStreamingState, ChatSubmitFlightState } from './ChatUiState';
 import type { ChatConversationBodyStatus } from '../../../../stores/chatConversationBodyStatus';
+import type { VoiceMessageRequest } from '../../../../app/chat/voiceMessageRequestStore';
 
 // Split map lives in CHAT_CONTEXT_SPLIT.md so future拆分 has a stable field-level boundary.
 export type ChatContextPresentationValue = {
@@ -18,6 +19,10 @@ export type ChatContextPresentationValue = {
   activeConversationId: string | null;
   activeCollaboratorId: string | null;
   showChatAvatars: boolean;
+  showCollaboratorName: boolean;
+  showMessageClock: boolean;
+  showModelName: boolean;
+  showTokenUsage: boolean;
   personas: Persona[];
   startupReady: boolean;
   interactionLocked: boolean;
@@ -69,6 +74,7 @@ export type ChatContextActionsValue = {
   stopGeneration: () => void;
   retry: (message: ChatMessage) => Promise<void>;
   editMessage: (message: ChatMessage) => void;
+  deleteMessageTurn: (message: ChatMessage) => void;
   editAssistantMessage: (message: ChatMessage, content: string) => void;
   cacheAssistantSpeech: (message: ChatMessage, voiceCache: ChatMessageVoiceCache) => void;
   forkFromMessage: (message: ChatMessage) => void;
@@ -78,6 +84,7 @@ export type ChatContextActionsValue = {
   cancelEdit: () => void;
   toggleThinkingCollapsed: (messageId: string) => void;
   openThinkingSummary: (message: ChatMessage) => void;
+  toggleThinkingSummary: (message: ChatMessage) => void;
   toggleCodeExpanded: (messageId: string) => void;
   applyToolPreview: (message: ChatMessage) => void;
   saveToolPreview: (message: ChatMessage) => void;
@@ -107,6 +114,11 @@ export type ChatContextActionsValue = {
   selectPersona: (collaboratorId: string) => void;
   deleteCollaborator: (collaboratorId: string) => void;
   closeThinkingSummary: () => void;
+  /** 用户点了语音申请卡片的「允许」：合成音频并发成一条语音条。 */
+  allowVoiceMessage: (request: VoiceMessageRequest) => Promise<void>;
+  notifyCallDeclined: (invite: { conversationId: string; collaboratorId: string }) => Promise<void>;
+  notifyCallMissed: (invite: { conversationId: string; collaboratorId: string }) => Promise<void>;
+  notifyCallEnded: (args: { conversationId: string; collaboratorId: string }) => Promise<void>;
 };
 
 export type ChatContextValue = {

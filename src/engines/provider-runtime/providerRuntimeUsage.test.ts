@@ -37,4 +37,32 @@ describe('parseOpenAiCompatibleUsage', () => {
       cacheCreationInputTokens: 0
     });
   });
+
+  it('Anthropic 风格：input_tokens 不含缓存，总数要加回去', () => {
+    const usage = parseOpenAiCompatibleUsage({
+      input_tokens: 2684,
+      output_tokens: 78,
+      cache_read_input_tokens: 50751,
+      cache_creation_input_tokens: 28,
+      total_tokens: 53541
+    });
+
+    // 以前的算法：miss = 2684 - 50751 → 负数被截成 0 → 命中率恒等于 100%
+    expect(usage?.cacheMissInputTokens).toBe(2684);
+    expect(usage?.cachedInputTokens).toBe(50751);
+    expect(usage?.inputTokens).toBe(2684 + 50751 + 28);
+  });
+
+  it('Anthropic 风格但没有任何缓存读写时，仍算作未命中', () => {
+    const usage = parseOpenAiCompatibleUsage({
+      input_tokens: 1200,
+      output_tokens: 40,
+      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: 0
+    });
+
+    expect(usage?.inputTokens).toBe(1200);
+    expect(usage?.cacheMissInputTokens).toBe(1200);
+    expect(usage?.cachedInputTokens).toBe(0);
+  });
 });

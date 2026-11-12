@@ -9,6 +9,10 @@
   pointer-events: none;
 }
 
+.collection-floating-create-anchor--trigger-hidden {
+  display: none;
+}
+
 .collection-floating-create-anchor > * {
   pointer-events: auto;
 }

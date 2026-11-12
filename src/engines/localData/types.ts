@@ -23,6 +23,7 @@ import type {
   SavedSkin,
   ThemeState,
   VoiceGenerationSettings,
+  VoiceTranscriptionSettings,
   WebDavConfig,
   WebSearchConfig,
   World,
@@ -347,6 +348,7 @@ export type RuntimeSettingsRowValue = {
   imageGeneration: ImageGenerationSettings;
   imageUnderstanding: ImageUnderstandingSettings;
   voiceGeneration: VoiceGenerationSettings;
+  voiceTranscription?: VoiceTranscriptionSettings;
   toolPromptPreferences: Record<PolarisToolPromptGroup, boolean>;
   taskModeEnabled: boolean;
   mcpToolTimeoutSeconds: number;

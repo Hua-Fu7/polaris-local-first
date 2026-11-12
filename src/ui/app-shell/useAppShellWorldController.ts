@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { ImpactStyle } from '@capacitor/haptics';
 import { buildChatWorldProps, buildTopbarProps } from '../../app/shell/buildAppShellProps';
+import { openHomeScreen } from '../../app/home/homeScreenStore';
 import { useThemeDomEffects } from '../useThemeDomEffects';
 import { useWorldFramePresence } from '../useWorldFramePresence';
 import { triggerImpactActionHaptic } from '../haptics';
@@ -32,6 +33,11 @@ type UseAppShellWorldControllerArgs = {
     infoFullscreenOpen: boolean;
     setInfoFullscreenOpen: (next: boolean | ((prev: boolean) => boolean)) => void;
   };
+  chatSearch: {
+    open: boolean;
+    setOpen: (next: boolean | ((prev: boolean) => boolean)) => void;
+    close: () => void;
+  };
   navigationActions: {
     openPreviewChat: () => void;
     prepareChatForWorldReturn: () => void;
@@ -52,6 +58,7 @@ export function useAppShellWorldController({
   toggleWorld,
   derived,
   collection,
+  chatSearch,
   navigationActions,
   chatUi,
   toggleMenu,
@@ -92,23 +99,27 @@ export function useAppShellWorldController({
     collaboratorSwitchOpen: collection.collaboratorSwitchOpen,
     collectionShelf,
     searchOpen: collection.searchOpen,
+    chatSearchOpen: chatSearch.open,
     collectionInfoFullscreenOpen: collection.infoFullscreenOpen,
     menuOpen: false,
     activeThemePreview,
     toggleWorld: () => {
+      // 顶栏那块空白现在是「回首页」：不管在哪个世界，都落回聊天世界的首页。
       if (isWorldSwitching) return;
-      const nextWorld = activeWorld === 'collection' ? 'chat' : 'collection';
-      preloadLazyModule(nextWorld === 'chat' ? loadChatWorldModule : loadCollectionWorldModule);
-      if (nextWorld === 'chat') {
+      chatSearch.close();
+      if (activeWorld !== 'chat') {
+        preloadLazyModule(loadChatWorldModule);
         navigationActions.prepareChatForWorldReturn();
+        toggleWorld();
       }
-      toggleWorld();
+      openHomeScreen();
     },
     createConversation: navigationActions.openFreshConversation,
     toggleMenu,
     openSettings,
     openPreviewChat: navigationActions.openPreviewChat,
     setSearchOpen: collection.setSearchOpen,
+    setChatSearchOpen: chatSearch.setOpen,
     setCollaboratorSwitchOpen: collection.setCollaboratorSwitchOpen,
     setCollectionInfoFullscreenOpen: collection.setInfoFullscreenOpen
   });
@@ -118,6 +129,8 @@ export function useAppShellWorldController({
     isWorldSwitching,
     openToolbox,
     openProviderSettings,
+    chatSearchOpen: chatSearch.open,
+    closeChatSearch: chatSearch.close,
     ui: chatUi
   });
   const groupWorldProps = {

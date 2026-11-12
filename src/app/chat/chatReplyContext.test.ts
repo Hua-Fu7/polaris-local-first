@@ -445,7 +445,7 @@ describe('buildReplyToolContext', () => {
     }).toolContext.imageGenerationAvailable).toBe(false);
   });
 
-  it('falls back to the collection active card when this turn did not attach a continue-card', () => {
+  it('只点开、没发过来的时候，不再把卡片塞进请求', () => {
     const cards: CodeCard[] = [{
       id: 'card-1',
       kind: 'card',
@@ -471,9 +471,9 @@ describe('buildReplyToolContext', () => {
       messages
     });
 
-    expect(result.effectiveActiveCardId).toBe('card-1');
-    expect(result.toolContext.activeCard?.id).toBe('card-1');
-    expect(result.toolContext.activeCardReferenceMode).toBe('ambient');
+    expect(result.effectiveActiveCardId).toBeNull();
+    expect(result.toolContext.activeCard).toBeNull();
+    expect(result.toolContext.activeCardReferenceMode).toBeUndefined();
     expect(result.toolContext.toolEnforcementMode).toBe('normal');
   });
 
@@ -640,7 +640,7 @@ describe('buildReplyToolContext', () => {
       messages
     });
 
-    expect(result.effectiveActiveCardId).toBe('card-1');
+    expect(result.effectiveActiveCardId).toBeNull();
     expect(result.toolContext.toolEnforcementMode).toBe('normal');
   });
 

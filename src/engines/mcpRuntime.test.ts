@@ -1,13 +1,85 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+// mcpRuntimeHttp 在原生端会走 native/providerHttp 的 NativeProviderHttp 插件，
+// 这里搭一个最小的假 MCP 服务：按请求体里的 method 回对应的 JSON-RPC 结果。
+const nativeHttp = vi.hoisted(() => {
+  const state = {
+    listeners: [] as Array<(event: { requestId: string; type: string; data?: string }) => void>,
+    startCalls: [] as Array<{ url: string; method: string }>
+  };
+
+  function replyFor(body: { id?: unknown; method?: string }) {
+    if (body.method === 'initialize') {
+      return {
+        jsonrpc: '2.0',
+        id: body.id,
+        result: { protocolVersion: '2025-03-26', capabilities: { tools: {} } }
+      };
+    }
+    if (body.method === 'notifications/initialized') {
+      return null;
+    }
+    if (body.method === 'tools/list') {
+      return {
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {
+          tools: [{ name: 'get_weather', description: 'Get weather', inputSchema: { type: 'object' } }]
+        }
+      };
+    }
+    if (body.method === 'tools/call') {
+      return {
+        jsonrpc: '2.0',
+        id: body.id,
+        result: { content: [{ type: 'text', text: 'Current weather: sunny' }] }
+      };
+    }
+    return null;
+  }
+
+  const plugin = {
+    start: async (options: { requestId: string; url: string; body?: string }) => {
+      const body = options.body ? JSON.parse(options.body) : {};
+      state.startCalls.push({ url: options.url, method: body?.method ?? '' });
+      const reply = replyFor(body);
+      const base64 = reply ? Buffer.from(JSON.stringify(reply), 'utf8').toString('base64') : '';
+      // 事件在 start 的 await 之后才到，providerHttp 会把先到的事件排队，这里用微任务复现同样的时序。
+      queueMicrotask(() => {
+        for (const listener of [...state.listeners]) {
+          if (base64) listener({ requestId: options.requestId, type: 'chunk', data: base64 });
+          listener({ requestId: options.requestId, type: 'complete' });
+        }
+      });
+      return { status: 200, contentType: 'application/json' };
+    },
+    cancel: async () => undefined,
+    addListener: async (
+      _eventName: string,
+      listener: (event: { requestId: string; type: string; data?: string }) => void
+    ) => {
+      state.listeners.push(listener);
+      return {
+        remove: async () => {
+          state.listeners = state.listeners.filter((item) => item !== listener);
+        }
+      };
+    }
+  };
+
+  return { state, plugin };
+});
+
 vi.mock('@capacitor/core', () => ({
   Capacitor: {
     isNativePlatform: vi.fn(() => false),
-    getPlatform: vi.fn(() => 'web')
+    getPlatform: vi.fn(() => 'web'),
+    isPluginAvailable: vi.fn(() => true)
   },
   CapacitorHttp: {
     request: vi.fn()
-  }
+  },
+  registerPlugin: vi.fn(() => nativeHttp.plugin)
 }));
 
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
@@ -53,6 +125,8 @@ describe('mcpRuntime', () => {
     vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
     vi.mocked(Capacitor.getPlatform).mockReturnValue('web');
     vi.mocked(CapacitorHttp.request).mockReset();
+    nativeHttp.state.startCalls = [];
+    nativeHttp.state.listeners = [];
     clearMcpToolCatalogCacheForTests();
     vi.unstubAllGlobals();
   });
@@ -204,72 +278,19 @@ describe('mcpRuntime', () => {
     ]);
   });
 
-  it.each(['ios', 'android'] as const)('uses CapacitorHttp for streamable-http MCP on native %s', async (platform) => {
+  it.each(['ios', 'android'] as const)('routes streamable-http MCP through the native bridge on native %s', async (platform) => {
     vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
     vi.mocked(Capacitor.getPlatform).mockReturnValue(platform);
-    const nativeRequestMock = vi.mocked(CapacitorHttp.request).mockImplementation(async (options) => {
-      const body = typeof options.data === 'string' ? JSON.parse(options.data) : null;
-
-      if (body?.method === 'initialize') {
-        return createNativeResponse({
-          jsonrpc: '2.0',
-          id: body.id,
-          result: {
-            protocolVersion: '2025-03-26',
-            capabilities: {
-              tools: {}
-            }
-          }
-        }, {
-          headers: {
-            'content-type': 'application/json',
-            'Mcp-Session-Id': 'session-native'
-          }
-        });
-      }
-
-      if (body?.method === 'notifications/initialized') {
-        return createNativeResponse('', {
-          status: 202
-        });
-      }
-
-      if (body?.method === 'tools/list') {
-        return createNativeResponse({
-          jsonrpc: '2.0',
-          id: body.id,
-          result: {
-            tools: [{
-              name: 'get_weather',
-              description: 'Get weather by city',
-              inputSchema: {
-                type: 'object',
-                properties: {
-                  city: {
-                    type: 'string'
-                  }
-                }
-              }
-            }]
-          }
-        }, {
-          headers: {
-            'content-type': 'application/json'
-          }
-        });
-      }
-
-      if (options.method === 'DELETE') {
-        return createNativeResponse('', {
-          status: 204
-        });
-      }
-
-      throw new Error(`Unexpected native request: ${options.method ?? 'GET'}`);
+    // 原生端必须走 NativeProviderHttp 桥：WebView 里的 fetch 受 CORS 约束，很多 MCP
+    // 服务器（galatea、lkcoffee 之类）根本不回 OPTIONS 预检，带 Authorization 就必然失败。
+    // 见 mcpRuntimeHttp.ts 里的 shouldUseNativeMcpHttp。
+    const nativeRequestMock = vi.mocked(CapacitorHttp.request).mockResolvedValue(
+      createNativeResponse('', { status: 500 })
+    );
+    const fetchMock = vi.fn(async () => {
+      throw new Error(`fetch must not be used on native ${platform}`);
     });
-    vi.stubGlobal('fetch', vi.fn(async () => {
-      throw new Error(`fetch should not be used on native ${platform} streamable-http`);
-    }));
+    vi.stubGlobal('fetch', fetchMock);
 
     const result = await resolveMcpToolCatalog({
       servers: [createServer()],
@@ -281,7 +302,15 @@ describe('mcpRuntime', () => {
       serverId: 'server-1',
       toolName: 'get_weather'
     });
-    expect(nativeRequestMock).toHaveBeenCalled();
+    expect(nativeHttp.state.startCalls.map((call) => call.method)).toEqual([
+      'initialize',
+      'notifications/initialized',
+      'tools/list'
+    ]);
+    expect(nativeHttp.state.startCalls.every((call) => call.url === 'https://mcp.example.com')).toBe(true);
+    // 桥接走的是自定义插件，既不是 CapacitorHttp，也不是 fetch。
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(nativeRequestMock).not.toHaveBeenCalled();
   });
 
   it('retries MCP catalog reads before hiding tools from the directory', async () => {
@@ -781,5 +810,111 @@ describe('mcpRuntime', () => {
       isError: false
     });
     expect(nativeRequestMock).not.toHaveBeenCalled();
+  });
+
+  it('reuses a just-read tool directory instead of re-reading it on every send', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : null;
+
+      if (body?.method === 'initialize') {
+        return createJsonResponse({
+          jsonrpc: '2.0',
+          id: body.id,
+          result: {
+            protocolVersion: '2025-03-26',
+            capabilities: {
+              tools: {}
+            }
+          }
+        }, {
+          headers: {
+            'content-type': 'application/json',
+            'Mcp-Session-Id': 'session-fresh'
+          }
+        });
+      }
+
+      if (body?.method === 'notifications/initialized') {
+        return new Response(null, { status: 202 });
+      }
+
+      if (body?.method === 'tools/list') {
+        return createJsonResponse({
+          jsonrpc: '2.0',
+          id: body.id,
+          result: {
+            tools: [{
+              name: 'get_weather',
+              description: 'Get weather'
+            }]
+          }
+        });
+      }
+
+      if (init?.method === 'DELETE' && String(input) === 'https://mcp.example.com') {
+        return new Response(null, { status: 204 });
+      }
+
+      throw new Error(`Unexpected fetch call: ${String(input)} ${init?.method ?? 'GET'}`);
+    });
+    const server = createServer({ id: 'server-fresh', handle: 'fresh' });
+
+    const first = await resolveMcpToolCatalog({
+      servers: [server],
+      timeoutSeconds: 5,
+      fetchImpl: fetchMock as typeof fetch
+    });
+    const callsAfterFirstRead = fetchMock.mock.calls.length;
+
+    const second = await resolveMcpToolCatalog({
+      servers: [server],
+      timeoutSeconds: 5,
+      fetchImpl: fetchMock as typeof fetch
+    });
+
+    expect(first.tools.map((tool) => tool.toolName)).toEqual(['get_weather']);
+    expect(second.tools.map((tool) => tool.toolName)).toEqual(['get_weather']);
+    // 目录刚读过就不该再占着发送路径等一次网络——新鲜度由心跳负责。
+    expect(fetchMock.mock.calls.length).toBe(callsAfterFirstRead);
+
+    const refreshed = await resolveMcpToolCatalog({
+      servers: [server],
+      timeoutSeconds: 5,
+      fetchImpl: fetchMock as typeof fetch,
+      forceRefresh: true
+    });
+
+    expect(refreshed.tools.map((tool) => tool.toolName)).toEqual(['get_weather']);
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterFirstRead);
+  });
+
+  it('stops re-paying the retry budget while an MCP server is known to be down', async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new Error('connection refused');
+    });
+    const server = createServer({ id: 'server-down', handle: 'down' });
+
+    const first = await resolveMcpToolCatalog({
+      servers: [server],
+      timeoutSeconds: 5,
+      fetchImpl: fetchMock as typeof fetch,
+      retryDelaysMs: [0, 0, 0]
+    });
+    const attemptsAfterFirstCall = fetchMock.mock.calls.length;
+
+    const second = await resolveMcpToolCatalog({
+      servers: [server],
+      timeoutSeconds: 5,
+      fetchImpl: fetchMock as typeof fetch,
+      retryDelaysMs: [0, 0, 0]
+    });
+
+    // 第一次照旧把重试走完……
+    expect(attemptsAfterFirstCall).toBeGreaterThan(1);
+    expect(first.errors).toHaveLength(1);
+    // ……之后每次发送都不再为一个已知挂掉的服务器重走一遍退避。
+    expect(fetchMock.mock.calls.length).toBe(attemptsAfterFirstCall);
+    expect(second.tools).toEqual([]);
+    expect(second.errors).toHaveLength(1);
   });
 });

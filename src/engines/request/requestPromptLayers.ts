@@ -8,6 +8,7 @@ import { buildCapabilityEntries } from './requestPromptCapabilities';
 import { buildIdentityEntries } from './requestPromptIdentity';
 import { buildModelRuntimeEntry, buildRuntimeClockEntry, buildWorkRuntimeEntry } from './requestPromptRuntime';
 import { buildSystemIdentityEntries } from './requestPromptSystemIdentity';
+import type { CanonicalProviderReasoningMode } from '../provider-runtime/providerRuntimeTypes';
 import type { AssistantToolPromptProtocolMode } from '../tool-protocol/assistantToolProtocolPrompt';
 
 export function buildAssistantPromptLayers(params: {
@@ -21,6 +22,7 @@ export function buildAssistantPromptLayers(params: {
   promptInjections?: ProviderCapabilityPromptInjection[];
   toolContext?: AssistantToolContext;
   toolProtocolMode?: AssistantToolPromptProtocolMode;
+  reasoningMode?: CanonicalProviderReasoningMode;
 }): string[] {
   return buildAssistantPromptParts(params)
     .filter((part) => part.enabled)
@@ -38,8 +40,9 @@ export function buildAssistantPromptParts(params: {
   promptInjections?: ProviderCapabilityPromptInjection[];
   toolContext?: AssistantToolContext;
   toolProtocolMode?: AssistantToolPromptProtocolMode;
+  reasoningMode?: CanonicalProviderReasoningMode;
 }): AssistantPromptPart[] {
-  const { personaPrompt, personaPromptSource, templateContext, messages, regexTriggers, currentTask, includeRuntimeClockContext, promptInjections, toolContext, toolProtocolMode } = params;
+  const { personaPrompt, personaPromptSource, templateContext, messages, regexTriggers, currentTask, includeRuntimeClockContext, promptInjections, toolContext, toolProtocolMode, reasoningMode } = params;
   const systemIdentityEntries = buildSystemIdentityEntries();
   const identityEntries = buildIdentityEntries({
     personaPrompt,

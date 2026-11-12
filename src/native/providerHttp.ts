@@ -12,7 +12,12 @@ type NativeProviderHttpPlugin = {
     requestId: string;
     url: string;
     headers: Record<string, string>;
-    body: string;
+    /** Text body. Omit when sending a binary body instead. */
+    body?: string;
+    /** Base64-encoded binary body, used for multipart uploads such as audio. */
+    bodyBase64?: string;
+    /** Explicit Content-Type, required alongside bodyBase64. */
+    contentType?: string;
   }): Promise<{
     status: number;
     contentType?: string;
@@ -53,6 +58,36 @@ export async function executeNativeProviderHttpRequest(args: {
   url: string;
   headers: Record<string, string>;
   body: string;
+  signal?: AbortSignal;
+  onResponse: (response: { status: number; contentType: string }) => void;
+  onTextChunk: (chunk: string) => void;
+}) {
+  return executeNativeProviderHttpRawRequest({ ...args, bodyBase64: undefined, contentType: undefined });
+}
+
+/**
+ * Same native transport, but able to carry a binary request body. The bridge
+ * only passes strings, so binary payloads travel base64-encoded and the
+ * Content-Type has to be supplied explicitly.
+ */
+export async function executeNativeProviderHttpBinaryRequest(args: {
+  url: string;
+  headers: Record<string, string>;
+  bodyBase64: string;
+  contentType: string;
+  signal?: AbortSignal;
+  onResponse: (response: { status: number; contentType: string }) => void;
+  onTextChunk: (chunk: string) => void;
+}) {
+  return executeNativeProviderHttpRawRequest({ ...args, body: undefined });
+}
+
+async function executeNativeProviderHttpRawRequest(args: {
+  url: string;
+  headers: Record<string, string>;
+  body?: string;
+  bodyBase64?: string;
+  contentType?: string;
   signal?: AbortSignal;
   onResponse: (response: { status: number; contentType: string }) => void;
   onTextChunk: (chunk: string) => void;
@@ -135,7 +170,9 @@ export async function executeNativeProviderHttpRequest(args: {
         requestId,
         url: args.url,
         headers: args.headers,
-        body: args.body
+        body: args.body,
+        bodyBase64: args.bodyBase64,
+        contentType: args.contentType
       }),
       abortPromise
     ]);

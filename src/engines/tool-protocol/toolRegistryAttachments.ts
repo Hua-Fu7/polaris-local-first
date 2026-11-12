@@ -15,6 +15,7 @@ type AttachmentToolKind = Extract<
   | 'bundleAttachments'
   | 'generateImage'
   | 'sendImageAttachment'
+  | 'sendVoiceMessage'
   | 'inspectImageAsset'
   | 'extractImagePalette'
   | 'createImageVariant'
@@ -109,9 +110,9 @@ export const ATTACHMENT_TOOL_DEFINITION_MAP = {
     brief: '把已有图片发到聊天里',
     schema: {
       name: 'sendImageAttachment',
-      description: '把当前对话里的图片附件或图片收藏里的现有图片作为本地图片附件发到聊天里。不调用生图模型。',
+      description: '把当前对话里的图片附件、图片收藏，或当前自定义表情包里的表情作为本地图片附件发到聊天里。发送自定义表情时 target 使用 sticker:<id>。不调用生图模型。',
       parameters: objectParameters({
-        target: stringProperty('图片 URL、图片附件 id、图片卡 id、assetId、文件名或标题；省略时使用最近/唯一可用图片。'),
+        target: stringProperty('图片 URL、图片附件 id、图片卡 id、assetId、文件名或标题；发送自定义表情时使用 sticker:<id>。省略时使用最近/唯一可用图片。'),
         title: stringProperty('可选显示文件名。'),
         targetLabel: stringProperty('可选目标说明。')
       })
@@ -119,7 +120,31 @@ export const ATTACHMENT_TOOL_DEFINITION_MAP = {
     rules: [
       '4. sendImageAttachment：把已有图片发到聊天里，返回本地图片附件。',
       '- 用户要“发这张图/把图片库里的某张图发出来/找一张已有图给我看/把这个图片链接发出来”时，用 sendImageAttachment。',
-      '- sendImageAttachment 只复用或导入已有图片，不需要生图模型，也不要改用 generateImage。'
+      '- sendImageAttachment 只复用或导入已有图片，不需要生图模型，也不要改用 generateImage。',
+      '- 用户让你发自定义表情时，从当前请求提供的自定义表情包清单中挑一个，target 写 sticker:<id>；不要用 emoji 代替。',
+      '- 发表情（target 为 sticker:<id>）之前，回复正文里必须先有说出声的话；禁止只调用 sendImageAttachment 而不写正文。表情是给已经说出口的话配的，不能替代说话。'
+    ]
+  },
+  sendVoiceMessage: {
+    name: 'sendVoiceMessage',
+    group: 'voice',
+    resultReplayMode: 'detail-excerpt',
+    brief: '想发语音条时先申请，等用户允许再合成',
+    schema: {
+      name: 'sendVoiceMessage',
+      description: '想用一条语音回话时调用：把要念的那句话交给用户确认，用户点「允许」之后才会合成语音条并出现在聊天里。没点允许不会花额度，也不会发出任何声音。',
+      parameters: objectParameters({
+        text: stringProperty('要念出来的那句话。写成能直接朗读的短句，不要带 markdown、括号说明或表情符号。'),
+        targetLabel: stringProperty('可选目标说明。')
+      }, ['text'])
+    },
+    rules: [
+      '语音动作：',
+      '10. sendVoiceMessage：想发一条语音条时调用。它只发出「申请」，用户点「允许」之后才会合成，点了「不用」就什么都不发。',
+      '- 只在用说的比用写的更合适时才申请：撒娇、晚安、念一小段、情绪很重的短句。正文该说的话照常写在回复里，语音是加演，不是替代。',
+      '- 一次只申请一句，两三句以内；更长的话直接写文字。',
+      '- 调用后不要自己合成音频，也不要说「已经发好了」——这时候只是递了一张确认卡片，用户点「允许」才会有声音。',
+      '- 用户点「不用」就当你没发过：不要追问，也不要马上重复申请同一句话。'
     ]
   },
   inspectImageAsset: {

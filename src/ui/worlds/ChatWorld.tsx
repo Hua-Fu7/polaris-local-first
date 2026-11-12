@@ -1,10 +1,13 @@
 import type { DragEvent } from 'react';
-import { Suspense, lazy, useRef } from 'react';
-import { loadThinkingSheetModule } from '../app-shell/appShellLazyModules';
+import { useRef } from 'react';
 import { ChatComposer } from './chat/composer/ChatComposer';
 import { useComposerFileIngest } from './chat/composer/useComposerFileIngest';
 import { ChatProvider } from './chat/ChatProvider';
+import { ClawdPet } from './chat/ClawdPet';
 import { MessageTimeline } from './chat/timeline/MessageTimeline';
+import { HomeScreen } from './home/HomeScreen';
+import { useHomeScreenOpen } from './home/useHomeScreenOpen';
+import { ChatMessageSearchOverlay } from './chat/search/ChatMessageSearchOverlay';
 import {
   useChatActions,
   useChatComposer,
@@ -14,8 +17,6 @@ import {
 } from './chat/context/ChatContext';
 import type { ChatUiState } from './chat/context/ChatUiState';
 
-const ThinkingSheet = lazy(() => loadThinkingSheetModule().then((module) => ({ default: module.ThinkingSheet })));
-
 type ChatWorldProps = {
   shell: {
     isActiveWorld: boolean;
@@ -23,20 +24,22 @@ type ChatWorldProps = {
     openToolbox: () => void;
     openProviderSettings: () => void;
   };
+  search?: {
+    open: boolean;
+    onClose: () => void;
+  };
   ui: ChatUiState;
 };
 
-function ChatWorldLayout({ shell }: ChatWorldProps) {
+function ChatWorldLayout({ shell, search }: ChatWorldProps) {
   const stablePayload = useChatStablePayload();
   const presentation = useChatPresentation();
   const composer = useChatComposer();
   const ui = useChatUi();
   const actions = useChatActions();
   const addComposerFiles = useComposerFileIngest();
+  const homeOpen = useHomeScreenOpen();
   const dragDepthRef = useRef(0);
-  const thinkingSummaryMessage = ui.thinkingSummaryMessageId
-    ? stablePayload.messages.find((message) => message.id === ui.thinkingSummaryMessageId) ?? null
-    : null;
   const isFileDrag = (event: DragEvent<HTMLElement>) => event.dataTransfer?.types.includes('Files') ?? false;
   const handleDragEnter = (event: DragEvent<HTMLElement>) => {
     if (!isFileDrag(event)) return;
@@ -76,21 +79,17 @@ function ChatWorldLayout({ shell }: ChatWorldProps) {
       onDrop={handleDrop}
     >
       <div className="chat-body">
-        <MessageTimeline isWorldSettled={shell.isActiveWorld && !shell.isWorldSwitching} />
+        {homeOpen ? (
+          <HomeScreen />
+        ) : (
+          <MessageTimeline isWorldSettled={shell.isActiveWorld && !shell.isWorldSwitching} />
+        )}
       </div>
       <div className="chat-dock">
+        <ClawdPet />
         <ChatComposer />
       </div>
-      {thinkingSummaryMessage ? (
-        <Suspense fallback={null}>
-          <ThinkingSheet
-            message={thinkingSummaryMessage}
-            messages={stablePayload.messages}
-            assistantName={presentation.fallbackAssistantName}
-            onClose={actions.closeThinkingSummary}
-          />
-        </Suspense>
-      ) : null}
+      {search?.open ? <ChatMessageSearchOverlay onClose={search.onClose} /> : null}
     </section>
   );
 }

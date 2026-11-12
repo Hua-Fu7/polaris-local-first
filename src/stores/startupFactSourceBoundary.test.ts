@@ -15,7 +15,9 @@ function sourceFilesUnder(relativePath: string): string[] {
     const fullPath = path.join(current, entry);
     if (statSync(fullPath).isDirectory()) return walk(fullPath);
     if (!/\.(ts|tsx)$/.test(entry) || entry.endsWith('.test.ts') || entry.endsWith('.test.tsx')) return [];
-    return [path.relative(repoRoot, fullPath)];
+    // Repo-relative paths are asserted with forward slashes, so normalise the
+    // separators Windows produces instead of failing on every expectation.
+    return [path.relative(repoRoot, fullPath).split(path.sep).join('/')];
   });
   return walk(root).sort();
 }

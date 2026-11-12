@@ -15,6 +15,11 @@
   gap: 18px;
 }
 .chat-flow-window-row { min-width: 0; }
+/* 只承载工具回执、内容被全部裁掉的行不要参与排版：0 高度也照样吃 gap，
+   调十次工具就能白攒出 160px 的空白。 */
+.chat-flow-window-row:has(> .msg-row > .message-turn > .message-turn-body > .message-turn-stack:empty) {
+  display: none;
+}
 .message-task-receipt-panel {
   width: min(100%, 540px);
   margin: 12px 0 2px;
@@ -36,6 +41,9 @@
 .chat-flow.generation-settled::after { min-height: 0; }
 .chat-flow.follow-reply-stage::after { min-height: var(--chat-reply-stage-stage-gap); }
 .chat-flow.follow-manual::after { min-height: 0; }
+/* reply-stage 的预留只在“等回复”时有用；回复已经落地就该收掉，
+   否则这一片空白会一直挂在对话末尾。这条要比上面那条更靠后、特异性更高。 */
+.chat-flow.follow-reply-stage.generation-settled::after { min-height: 0; }
 .chat-flow.follow-manual.generation-active::after { min-height: var(--chat-generation-reserve-gap); }
 .chat-empty-state {
   margin: auto 0;

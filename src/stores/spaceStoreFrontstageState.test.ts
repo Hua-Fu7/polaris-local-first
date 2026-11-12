@@ -8,7 +8,7 @@ import { DEFAULT_DISPLAY_PREFERENCES } from './spaceStoreDisplayPreferences';
 import { createInitialSpaceFrontstageState } from './spaceStoreFrontstageState';
 
 describe('createInitialSpaceFrontstageState', () => {
-  it('defaults the frontstage to the dialogue shelf in room world', () => {
+  it('defaults the main page to the dialogue shelf in room world', () => {
     expect(createInitialSpaceFrontstageState()).toEqual({
       activeWorld: 'collection',
       collectionShelf: 'dialogue',
@@ -54,14 +54,14 @@ describe('migratePersistedSpaceFrontstageState', () => {
 
   it('keeps an existing legacy chat world preference but drops stale workspace mirrors', () => {
     expect(migratePersistedSpaceFrontstageState({
-      activeWorld: 'chat',
+      activeWorld: 'collection',
       collectionShelf: 'dialogue',
       frontstageCollaboratorId: 'pharos',
       frontstageProjectId: 'workspace-3',
       editingCollaboratorId: 'pharos',
       screenshotDebugOverlayEnabled: true
     })).toEqual({
-      activeWorld: 'chat',
+      activeWorld: 'collection',
       collectionShelf: 'dialogue',
       frontstageCollaboratorId: 'pharos',
       collectionProjectId: null,
@@ -103,7 +103,7 @@ describe('migratePersistedSpaceFrontstageState', () => {
   it('uses only current-schema fields when the payload is versioned', () => {
     expect(migratePersistedSpaceFrontstageState({
       frontstageSchemaVersion: SPACE_FRONTSTAGE_SCHEMA_VERSION,
-      activeWorld: 'chat',
+      activeWorld: 'collection',
       collectionShelf: 'dialogue',
       frontstageCollaboratorId: null,
       currentCollaboratorId: 'legacy-collaborator',
@@ -112,7 +112,7 @@ describe('migratePersistedSpaceFrontstageState', () => {
       collectionProjectId: 'workspace-2',
       editingCollaboratorId: 'pharos'
     })).toEqual({
-      activeWorld: 'chat',
+      activeWorld: 'collection',
       collectionShelf: 'dialogue',
       frontstageCollaboratorId: null,
       collectionProjectId: 'workspace-2',

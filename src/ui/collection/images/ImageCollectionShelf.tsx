@@ -1,4 +1,5 @@
-import { type ChangeEvent, type DragEvent, useRef, useState } from 'react';
+import { type ChangeEvent, type DragEvent, useEffect, useRef, useState } from 'react';
+import { COLLECTION_CREATE_EVENT } from '../../../app/shell/collectionCreateCommands';
 import { createPortal } from 'react-dom';
 import { useImageCollectionShelfController } from '../../../app/collection/useImageCollectionShelfController';
 import { Icon } from '../../Icon';
@@ -33,6 +34,16 @@ export function ImageCollectionShelf({
   const { t, formatNumber } = copy;
   const controller = useImageCollectionShelfController(searchTerm);
   const [imageCreateMenuOpen, setImageCreateMenuOpen] = useState(false);
+  useEffect(() => {
+    const handleCreateCommand = (event: Event) => {
+      const detail = (event as CustomEvent<{ command?: string }>).detail;
+      if (detail?.command === 'image' && !controller.imageIngestBusy) {
+        setImageCreateMenuOpen(true);
+      }
+    };
+    window.addEventListener(COLLECTION_CREATE_EVENT, handleCreateCommand);
+    return () => window.removeEventListener(COLLECTION_CREATE_EVENT, handleCreateCommand);
+  }, [controller.imageIngestBusy]);
   const [dragActive, setDragActive] = useState(false);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
   const dragDepthRef = useRef(0);
@@ -109,6 +120,7 @@ export function ImageCollectionShelf({
       expanded={imageCreateMenuOpen}
       disabled={controller.imageIngestBusy}
       className="image-asset-floating-create"
+      triggerHidden
       onPress={() => setImageCreateMenuOpen((current) => !current)}
     >
       {imageCreateMenuOpen ? (

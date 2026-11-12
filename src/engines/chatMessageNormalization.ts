@@ -59,6 +59,7 @@ export function buildAssistantMessagePatch(args: {
   reply: AssistantReplyLike;
   nativeToolCalls?: ChatNativeToolCall[];
   memoryEvidence?: ChatMessage['memoryEvidence'];
+  obRecall?: ChatMessage['obRecall'];
 }): Partial<ChatMessage> {
   const patch: Partial<ChatMessage> = {
     content: args.visibleContent,
@@ -76,6 +77,9 @@ export function buildAssistantMessagePatch(args: {
   }
   if (args.memoryEvidence) {
     patch.memoryEvidence = args.memoryEvidence;
+  }
+  if (args.obRecall) {
+    patch.obRecall = args.obRecall;
   }
   return patch;
 }

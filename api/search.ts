@@ -90,13 +90,13 @@ function decodeBingResultUrl(rawHref: string) {
   }
 }
 
-async function runBraveSearch(query: string, maxResults: number): Promise<{ provider: string; results: SearchResultItem[] }> {
-  const apiKey = process.env.BRAVE_SEARCH_API_KEY?.trim();
+async function runBraveSearch(query: string, maxResults: number, apiKeyOverride?: string, endpoint = BRAVE_SEARCH_URL): Promise<{ provider: string; results: SearchResultItem[] }> {
+  const apiKey = apiKeyOverride?.trim() || process.env.BRAVE_SEARCH_API_KEY?.trim();
   if (!apiKey) {
     throw new Error('Brave Search API key missing');
   }
 
-  const url = new URL(BRAVE_SEARCH_URL);
+  const url = new URL(endpoint);
   url.searchParams.set('q', query);
   url.searchParams.set('count', String(maxResults));
 
@@ -172,6 +172,127 @@ async function runBingSearch(query: string, maxResults: number): Promise<{ provi
   return { provider: 'Bing', results };
 }
 
+async function runBochaSearch(
+  query: string,
+  maxResults: number,
+  apiKey?: string,
+  summary = true,
+  freshness = 'noLimit',
+  endpoint = 'https://api.bochaai.com/v1/web-search'
+): Promise<{ provider: string; results: SearchResultItem[] }> {
+  const key = apiKey?.trim() || process.env.BOCHA_API_KEY?.trim();
+  if (!key) throw new Error('Bocha Search API key missing');
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ query, count: maxResults, summary, freshness })
+  });
+  if (!response.ok) throw new Error(`Bocha search failed (${response.status})`);
+  const data = await response.json() as {
+    data?: { webPages?: { value?: Array<Record<string, unknown>> } };
+    webPages?: { value?: Array<Record<string, unknown>> };
+  };
+  const values = data.data?.webPages?.value ?? data.webPages?.value ?? [];
+  return {
+    provider: 'Bocha',
+    results: values.map((item) => ({
+      title: String(item.name ?? item.title ?? item.url ?? '未命名结果'),
+      url: String(item.url ?? ''),
+      snippet: String(item.summary ?? item.snippet ?? item.description ?? ''),
+      source: String(item.siteName ?? 'Bocha')
+    })).filter((item) => item.url)
+  };
+}
+
+async function runTavilySearch(
+  query: string,
+  maxResults: number,
+  apiKey?: string,
+  endpoint = 'https://api.tavily.com/search'
+): Promise<{ provider: string; results: SearchResultItem[] }> {
+  const key = apiKey?.trim() || process.env.TAVILY_API_KEY?.trim();
+  if (!key) throw new Error('Tavily Search API key missing');
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ api_key: key, query, max_results: maxResults, search_depth: 'basic' })
+  });
+  if (!response.ok) throw new Error(`Tavily search failed (${response.status})`);
+  const data = await response.json() as { results?: Array<{ title?: string; url?: string; content?: string }> };
+  return {
+    provider: 'Tavily',
+    results: (data.results ?? []).map((item) => ({
+      title: item.title?.trim() || item.url?.trim() || '未命名结果',
+      url: item.url?.trim() || '',
+      snippet: item.content?.trim() || '',
+      source: 'Tavily'
+    })).filter((item) => item.url)
+  };
+}
+
+function githubApiHeaders() {
+  const token = process.env.GITHUB_TOKEN?.trim();
+  return {
+    'Accept': 'application/vnd.github+json',
+    'User-Agent': 'PolarisBot/1.0',
+    'X-GitHub-Api-Version': '2022-11-28',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+}
+
+async function readGithubPage(rawUrl: string, maxChars: number) {
+  const input = new URL(rawUrl);
+  if (input.hostname !== 'github.com' && input.hostname !== 'www.github.com') return null;
+  const parts = input.pathname.split('/').filter(Boolean).map((part) => decodeURIComponent(part));
+  const [owner, repo, kind, ...rest] = parts;
+  if (!owner || !repo) return null;
+  const apiBase = (process.env.GITHUB_API_BASE_URL?.trim() || 'https://api.github.com').replace(/\/$/, '');
+  const apiFetch = async (path: string, accept = 'application/vnd.github+json') => {
+    const response = await fetch(`${apiBase}${path}`, {
+      headers: { ...githubApiHeaders(), 'Accept': accept }
+    });
+    if (!response.ok) {
+      throw new Error(`GitHub API 请求失败（${response.status}）。可在服务端配置 GITHUB_TOKEN 提高限额。`);
+    }
+    return response;
+  };
+  let title = `${owner}/${repo}`;
+  let text = '';
+  let canonicalUrl = rawUrl;
+  if (kind === 'blob' && rest.length >= 2) {
+    const branch = rest[0];
+    const filePath = rest.slice(1).join('/');
+    const response = await apiFetch(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${filePath.split('/').map(encodeURIComponent).join('/')}?ref=${encodeURIComponent(branch)}`, 'application/vnd.github.raw+json');
+    title = `${owner}/${repo}/${filePath}`;
+    text = await response.text();
+    canonicalUrl = `https://github.com/${owner}/${repo}/blob/${branch}/${filePath}`;
+  } else if (kind === 'issues' || kind === 'pull') {
+    const number = rest[0];
+    const response = await apiFetch(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${encodeURIComponent(number || '')}`);
+    const data = await response.json() as Record<string, unknown>;
+    title = String(data.title ?? `${owner}/${repo}#${number}`);
+    text = [`Title: ${data.title ?? ''}`, `State: ${data.state ?? ''}`, `URL: ${data.html_url ?? rawUrl}`, '', String(data.body ?? '')].join('\n');
+  } else if (kind === 'tree') {
+    const branch = rest[0];
+    const directory = rest.slice(1).join('/');
+    const response = await apiFetch(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${directory.split('/').filter(Boolean).map(encodeURIComponent).join('/')}?ref=${encodeURIComponent(branch)}`);
+    const data = await response.json() as Array<Record<string, unknown>>;
+    title = `${owner}/${repo}/${directory}`;
+    text = data.map((item) => `${String(item.type ?? '')}\t${String(item.name ?? '')}`).join('\n');
+  } else {
+    const response = await apiFetch(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`);
+    const data = await response.json() as Record<string, unknown>;
+    title = String(data.full_name ?? `${owner}/${repo}`);
+    text = [`Repository: ${title}`, `Description: ${data.description ?? ''}`, `Default branch: ${data.default_branch ?? ''}`, `Stars: ${data.stargazers_count ?? ''}`, `Language: ${data.language ?? ''}`, `URL: ${data.html_url ?? rawUrl}`].join('\n');
+    canonicalUrl = `https://github.com/${owner}/${repo}`;
+  }
+  const normalized = text.replace(/\r\n/g, '\n').trim();
+  return { url: canonicalUrl, title, text: normalized.slice(0, maxChars), truncated: normalized.length > maxChars, originalLength: normalized.length };
+}
 function htmlToReadableText(html: string) {
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const metaTags = html.match(/<meta\b[^>]*>/gi) ?? [];
@@ -241,6 +362,9 @@ function shouldReturnReadablePlatformShell(platform: string) {
 }
 
 async function readRemotePage(rawUrl: string, maxChars: number) {
+  const githubPage = await readGithubPage(rawUrl, maxChars);
+  if (githubPage) return githubPage;
+
   const { response, finalUrl } = await fetchRemotePageWithSafeRedirects(rawUrl, {
     headers: {
       'User-Agent': remotePageUserAgent(rawUrl),
@@ -345,16 +469,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
+    const searchProvider = typeof body.searchProvider === 'string' ? body.searchProvider.trim() : 'bingLocal';
+    const searchApiKey = typeof body.searchApiKey === 'string' ? body.searchApiKey.trim() : '';
+    const bochaSummary = typeof body.bochaSummary === 'boolean' ? body.bochaSummary : true;
+    const bochaFreshness = typeof body.bochaFreshness === 'string' && body.bochaFreshness.trim()
+      ? body.bochaFreshness.trim()
+      : 'noLimit';
+    const customSearchEndpoint = typeof body.customSearchEndpoint === 'string' ? body.customSearchEndpoint.trim() : '';
+    const customSearchAdapter = typeof body.customSearchAdapter === 'string' ? body.customSearchAdapter.trim() : 'tavily';
+    const customSearchLabel = typeof body.customSearchLabel === 'string' ? body.customSearchLabel.trim() : '';
+
     let provider = '';
     let results: SearchResultItem[] = [];
-    try {
-      const brave = await runBraveSearch(query, maxResults);
-      provider = brave.provider;
-      results = brave.results;
-    } catch {
-      const bing = await runBingSearch(query, maxResults);
-      provider = bing.provider;
-      results = bing.results;
+    if (searchProvider === 'bocha') {
+      const search = await runBochaSearch(query, maxResults, searchApiKey, bochaSummary, bochaFreshness);
+      provider = search.provider;
+      results = search.results;
+    } else if (searchProvider === 'brave') {
+      const search = await runBraveSearch(query, maxResults, searchApiKey);
+      provider = search.provider;
+      results = search.results;
+    } else if (searchProvider === 'tavily') {
+      const search = await runTavilySearch(query, maxResults, searchApiKey);
+      provider = search.provider;
+      results = search.results;
+    } else if (searchProvider === 'custom') {
+      if (!customSearchEndpoint) throw new Error('自定义搜索缺少接口地址');
+      let search: { provider: string; results: SearchResultItem[] };
+      if (customSearchAdapter === 'bocha') {
+        search = await runBochaSearch(query, maxResults, searchApiKey, bochaSummary, bochaFreshness, customSearchEndpoint);
+      } else if (customSearchAdapter === 'brave') {
+        search = await runBraveSearch(query, maxResults, searchApiKey, customSearchEndpoint);
+      } else if (customSearchAdapter === 'tavily') {
+        search = await runTavilySearch(query, maxResults, searchApiKey, customSearchEndpoint);
+      } else {
+        throw new Error('未知的自定义搜索适配器');
+      }
+      provider = customSearchLabel || search.provider;
+      results = search.results;
+    } else {
+      const search = await runBingSearch(query, maxResults);
+      provider = search.provider;
+      results = search.results;
     }
 
     const nextRateLimit = consumeRateLimit(userId);

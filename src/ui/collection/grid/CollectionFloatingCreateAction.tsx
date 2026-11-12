@@ -7,6 +7,7 @@ type CollectionFloatingCreateActionProps = {
   label: string;
   expanded?: boolean;
   disabled?: boolean;
+  triggerHidden?: boolean;
   className?: string;
   children?: ReactNode;
   onPress: () => void;
@@ -17,6 +18,7 @@ export const CollectionFloatingCreateAction = forwardRef<HTMLDivElement, Collect
     label,
     expanded = false,
     disabled = false,
+    triggerHidden = false,
     className,
     children,
     onPress
@@ -26,6 +28,7 @@ export const CollectionFloatingCreateAction = forwardRef<HTMLDivElement, Collect
         ref={ref}
         className={[
           'collection-floating-create-anchor',
+          triggerHidden ? 'collection-floating-create-anchor--trigger-hidden' : null,
           expanded ? 'collection-floating-create-anchor--open' : null,
           disabled ? 'collection-floating-create-anchor--disabled' : null,
           className
@@ -41,6 +44,7 @@ export const CollectionFloatingCreateAction = forwardRef<HTMLDivElement, Collect
             {children}
           </CreateActionSheet>
         ) : null}
+        {!triggerHidden ? (
         <button
           type="button"
           className="collection-floating-create-fab"
@@ -54,6 +58,7 @@ export const CollectionFloatingCreateAction = forwardRef<HTMLDivElement, Collect
         >
           <Icon name={expanded ? 'x' : 'plus'} size={16} />
         </button>
+        ) : null}
       </div>
     );
   }

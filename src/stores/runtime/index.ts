@@ -10,8 +10,10 @@ import type {
   ImageGenerationSettings,
   ImageUnderstandingSettings,
   MemoryVectorRetrievalSettings,
+  ObBrainSettings,
   ProviderProfile,
   VoiceGenerationSettings,
+  VoiceTranscriptionSettings,
   WebDavConfig,
   WebSearchConfig
 } from '../../types/domain';
@@ -63,6 +65,14 @@ import {
   normalizeVoiceGenerationSettings
 } from '../runtimeStoreVoiceGeneration';
 import {
+  DEFAULT_VOICE_TRANSCRIPTION_SETTINGS,
+  normalizeVoiceTranscriptionSettings
+} from '../runtimeStoreVoiceTranscription';
+import {
+  DEFAULT_OB_BRAIN_SETTINGS,
+  normalizeObBrainSettings
+} from '../runtimeStoreObBrain';
+import {
   commitRuntimeRowChangesFromStateActivating,
   readRuntimePayloadFromLocalDataRepositoryIfActive,
   type RuntimeLegacyLifecycleMap
@@ -76,9 +86,13 @@ export type RuntimePayload = {
   search: WebSearchConfig;
   conversationSummaryModel: ConversationSummaryModelSettings;
   memoryVectorRetrieval: MemoryVectorRetrievalSettings;
+  /** Added after the first releases, so payloads read from older rows may lack it. */
+  obBrain?: ObBrainSettings;
   imageGeneration: ImageGenerationSettings;
   imageUnderstanding: ImageUnderstandingSettings;
   voiceGeneration: VoiceGenerationSettings;
+  /** Added after the first releases, so payloads read from older rows may lack it. */
+  voiceTranscription?: VoiceTranscriptionSettings;
   toolPromptPreferences: Record<PolarisToolPromptGroup, boolean>;
   taskModeEnabled: boolean;
   mcpServers: McpServerConfig[];
@@ -153,6 +167,7 @@ export function normalizeRuntimePayload(
     memoryVectorRetrieval: normalizeMemoryVectorRetrievalSettings(
       payload?.memoryVectorRetrieval ?? DEFAULT_MEMORY_VECTOR_RETRIEVAL_SETTINGS
     ),
+    obBrain: normalizeObBrainSettings(payload?.obBrain ?? DEFAULT_OB_BRAIN_SETTINGS),
     imageGeneration: normalizeImageGenerationSettings(
       payload?.imageGeneration ?? DEFAULT_IMAGE_GENERATION_SETTINGS
     ),
@@ -162,6 +177,9 @@ export function normalizeRuntimePayload(
     voiceGeneration: normalizeVoiceGenerationSettings(
       payload?.voiceGeneration ?? DEFAULT_VOICE_GENERATION_SETTINGS,
       providers
+    ),
+    voiceTranscription: normalizeVoiceTranscriptionSettings(
+      payload?.voiceTranscription ?? DEFAULT_VOICE_TRANSCRIPTION_SETTINGS
     ),
     companionHost: normalizeCompanionHostState(payload?.companionHost ?? DEFAULT_COMPANION_HOST_STATE),
     companionConnections: normalizeCompanionConnections(payload?.companionConnections),

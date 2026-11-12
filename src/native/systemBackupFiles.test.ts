@@ -186,7 +186,24 @@ describe('systemBackupFiles availability', () => {
       dataBase64: 'AQID'
     });
     expect(mocks.systemFile.finishExportBackup).toHaveBeenCalledWith({
-      exportId: 'export-blob'
+      exportId: 'export-blob',
+      // 收尾时才建 Intent，这里不传就会落回 application/zip（语音被补 .zip 的老 bug）
+      mimeType: 'application/zip'
+    });
+  });
+
+  it('收尾时把真实 MIME 传下去，别让它落回 zip', async () => {
+    capacitorState.isNativePlatform = true;
+    capacitorState.platform = 'android';
+    mocks.systemFile.beginExportBackup.mockResolvedValue({ exportId: 'export-voice' });
+    mocks.systemFile.finishExportBackup.mockResolvedValue({ canceled: false });
+
+    await exportFileViaSystemFiles(new Blob([new Uint8Array([1])], { type: 'audio/mpeg' }),
+      'Polaris-voice-1.mp3');
+
+    expect(mocks.systemFile.finishExportBackup).toHaveBeenCalledWith({
+      exportId: 'export-voice',
+      mimeType: 'audio/mpeg'
     });
   });
 

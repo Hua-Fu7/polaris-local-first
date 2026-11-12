@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { closeHomeScreen } from '../home/homeScreenStore';
 import { filterCodeCardsForCollaboratorScope, resolveOwnerCollaboratorId } from '../../engines/collectionOwnership';
 import { createCompanionPersonaProjection, isCompanionCollaboratorId } from '../../engines/companion';
 import { enterChatWorld, enterGroupWorld } from '../shell/frontstageNavigation';
@@ -270,6 +271,7 @@ export function useCollectionWorldController(ui: CollectionWorldUiPorts) {
     hasScopedImageCards,
     activeConversationId,
     conversations,
+    scopedConversations: scopedConversationCandidates,
     filteredConversations,
     conversationMessageSearchIndex,
     roomProjects,
@@ -314,6 +316,7 @@ export function useCollectionWorldController(ui: CollectionWorldUiPorts) {
         frontstage.clearPendingAttachments();
         frontstage.clearPendingCardReference();
       }
+      closeHomeScreen();
       setActiveConversation(conversationId);
       enterChatWorld(frontstage);
     },
@@ -322,6 +325,7 @@ export function useCollectionWorldController(ui: CollectionWorldUiPorts) {
         frontstage.clearPendingAttachments();
         frontstage.clearPendingCardReference();
       }
+      closeHomeScreen();
       setActiveConversation(conversationId);
       enterChatWorld(frontstage);
       frontstage.setFocusedMessageTarget({ conversationId, messageId });
@@ -373,11 +377,15 @@ export function useCollectionWorldController(ui: CollectionWorldUiPorts) {
     collaboratorOverviewItems,
     onCreateAutomationRule: (seed: {
       collaboratorId: string;
+      mode?: PolarisTriggerRule['mode'];
       conversationMode?: PolarisTriggerRule['target']['conversationMode'];
       conversationId?: string | null;
       schedule: PolarisTriggerSchedule;
       prompt: string;
       name?: string;
+      proactiveSettings?: PolarisTriggerRule['proactiveSettings'];
+      sourceMessageId?: string;
+      nextRunAt?: number | null;
     }) => createAutomationRuleForCollaborator({
       seed,
       personas: collaborators,

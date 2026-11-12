@@ -53,13 +53,19 @@ export type UtilityToolAction = Extract<
       | 'createCalendarEvent'
       | 'updateCalendarEvent'
       | 'deleteCalendarEvent'
+      | 'readCalendarNotes'
+      | 'writeCalendarNote'
+      | 'updateCalendarNote'
+      | 'deleteCalendarNote'
       | 'startTask'
       | 'completeTask'
       | 'wait'
       | 'createProactiveMessageRule'
       | 'listProactiveMessageRules'
       | 'updateProactiveMessageRule'
-      | 'deleteProactiveMessageRule';
+      | 'deleteProactiveMessageRule'
+      | 'startVoiceCall'
+      | 'hangUp';
   }
 >;
 
@@ -277,6 +283,55 @@ async function executeUtilityToolAction(
       return ctx.deleteCalendarEvent({
         eventId: action.eventId
       });
+    case 'readCalendarNotes': {
+      if (!ctx.readCalendarNotes) return { ok: false, error: '当前没有可读取的 Polaris 日历。' };
+      const result = ctx.readCalendarNotes(action.fromDate, action.toDate);
+      if (!result.ok) return result;
+      const unreadLines = result.unreadChanges.length
+        ? [
+            '未读日历变化（本次已标记已读）：',
+            ...result.unreadChanges.map((change) => `- ${change.date} · ${change.kind === 'period' ? '经期' : '便签'}：${change.text}`)
+          ]
+        : [];
+      const noteLines = result.notes.length
+        ? result.notes.map((note, index) => `${index + 1}. ${note.date} · ${note.authorName}：${note.text}`)
+        : ['这个时间段没有 Polaris 日历便签。'];
+      return {
+        ok: true,
+        summary: `读取到 ${result.notes.length} 条 Polaris 日历便签，处理 ${result.unreadChanges.length} 条未读变化`,
+        detailText: [...unreadLines, ...noteLines].join('\n')
+      };
+    }
+    case 'writeCalendarNote': {
+      if (!ctx.writeCalendarNote) return { ok: false, error: '当前没有可写入的 Polaris 日历。' };
+      const result = ctx.writeCalendarNote(action.date, action.text);
+      if (!result.ok) return result;
+      return {
+        ok: true,
+        summary: `已写入 ${result.note.date} 的日历便签`,
+        detailText: `${result.note.authorName}：${result.note.text}\nnoteId=${result.note.id}`
+      };
+    }
+    case 'updateCalendarNote': {
+      if (!ctx.updateCalendarNote) return { ok: false, error: '当前没有可修改的 Polaris 日历便签。' };
+      const result = ctx.updateCalendarNote(action.noteId, action.text);
+      if (!result.ok) return result;
+      return {
+        ok: true,
+        summary: `已修改 ${result.note.date} 的日历便签`,
+        detailText: `${result.note.authorName}：${result.note.text}\nnoteId=${result.note.id}`
+      };
+    }
+    case 'deleteCalendarNote': {
+      if (!ctx.deleteCalendarNote) return { ok: false, error: '当前没有可删除的 Polaris 日历便签。' };
+      const result = ctx.deleteCalendarNote(action.noteId);
+      if (!result.ok) return result;
+      return {
+        ok: true,
+        summary: '已删除日历便签',
+        detailText: `noteId=${result.noteId}`
+      };
+    }
     case 'startTask':
       return {
         ok: true,
@@ -310,6 +365,10 @@ async function executeUtilityToolAction(
       return ctx.updateProactiveMessageRule(action);
     case 'deleteProactiveMessageRule':
       return ctx.deleteProactiveMessageRule(action);
+    case 'startVoiceCall':
+      return ctx.startVoiceCall(action);
+    case 'hangUp':
+      return ctx.hangUp(action);
     case 'runCode': {
       const result = await ctx.runCode(action.code);
       const logText = result.logs

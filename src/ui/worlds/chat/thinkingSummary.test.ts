@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createTranslator } from '../../../i18n';
 import type { ChatMessage } from '../../../types/domain';
-import { buildThinkingSessionSummary, buildThinkingSummary, createThinkingSummaryCopy } from './thinkingSummary';
+import {
+  buildThinkingSessionSummary,
+  buildThinkingSummary,
+  createThinkingSummaryCopy
+} from './thinkingSummary';
 
 const zhCopy = createThinkingSummaryCopy(createTranslator('zh-CN').t);
 

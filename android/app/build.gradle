@@ -7,7 +7,7 @@ android {
         applicationId "com.alyssa.polaris"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode 120
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -23,7 +23,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix ".debug"
-            versionNameSuffix "-debug"
+            versionNameSuffix "-debug.120"
         }
         release {
             minifyEnabled false

@@ -10,7 +10,7 @@ import {
 
 type UtilityToolKind = Extract<
   AssistantToolActionKind,
-  'listEnvironmentNodes' | 'inspectEnvironmentNode' | 'searchEnvironmentNodes' | 'createQrCode' | 'webSearch' | 'readWebPage' | 'listCalendars' | 'readCalendarEvents' | 'createCalendarEvent' | 'updateCalendarEvent' | 'deleteCalendarEvent' | 'runCode' | 'writeMemory' | 'writeMemoryDoc' | 'readMemoryDoc' | 'searchMemory' | 'openMemorySource' | 'readPolarisKnowledge' | 'startTask' | 'completeTask' | 'wait' | 'createProactiveMessageRule' | 'listProactiveMessageRules' | 'updateProactiveMessageRule' | 'deleteProactiveMessageRule'
+  'listEnvironmentNodes' | 'inspectEnvironmentNode' | 'searchEnvironmentNodes' | 'createQrCode' | 'webSearch' | 'readWebPage' | 'listCalendars' | 'readCalendarEvents' | 'createCalendarEvent' | 'updateCalendarEvent' | 'deleteCalendarEvent' | 'readCalendarNotes' | 'writeCalendarNote' | 'updateCalendarNote' | 'deleteCalendarNote' | 'runCode' | 'writeMemory' | 'writeMemoryDoc' | 'readMemoryDoc' | 'searchMemory' | 'openMemorySource' | 'readPolarisKnowledge' | 'startTask' | 'completeTask' | 'wait' |   'createProactiveMessageRule' | 'listProactiveMessageRules' | 'updateProactiveMessageRule' | 'deleteProactiveMessageRule' | 'startVoiceCall' | 'hangUp'
 >;
 
 const PROACTIVE_MESSAGE_RULES = [
@@ -284,6 +284,91 @@ export const UTILITY_TOOL_DEFINITION_MAP = {
       '5. deleteCalendarEvent：删除已有系统日历事件。',
       '- 删除已有日程前必须知道 eventId；不知道时先用 readCalendarEvents 定位。',
       '- 不要删除不确定是不是用户目标的事件；同名或时间相近时先读日历确认。'
+    ]
+  },
+  readCalendarNotes: {
+    name: 'readCalendarNotes',
+    group: 'environment',
+    alwaysAvailable: true,
+    resultReplayMode: 'full-detail',
+    brief: '读取 Polaris 日历便签',
+    schema: {
+      name: 'readCalendarNotes',
+      description: '读取当前协作者和艺艺写进 Polaris 日历的便签，并清掉当前协作者的未读日历变化。日期格式 yyyy-MM-dd。',
+      parameters: objectParameters({
+        fromDate: stringProperty('可选开始日期 yyyy-MM-dd。'),
+        toDate: stringProperty('可选结束日期 yyyy-MM-dd。'),
+        targetLabel: stringProperty('可选目标说明。')
+      })
+    },
+    rules: [
+      'Polaris 日历便签：',
+      '6. readCalendarNotes：读取 Polaris 日历便签，返回 noteId、date、author、text。',
+      '- 如果系统提示有未读日历变化，先用这个工具读取；读取后未读红点会消失。',
+      '- 用户问“这周有什么”“哪天记了什么”时，先读这个，不要读系统日历事件代替。',
+      '- 便签只保留最近 7 天，不要把它说成长久日志。'
+    ]
+  },
+  writeCalendarNote: {
+    name: 'writeCalendarNote',
+    group: 'environment',
+    alwaysAvailable: true,
+    resultReplayMode: 'detail-excerpt',
+    brief: '写入 Polaris 日历便签',
+    schema: {
+      name: 'writeCalendarNote',
+      description: '以小机的身份在 Polaris 日历里写一张便签。只有用户明确要求记一下、提醒或写进日历时才调用。',
+      parameters: objectParameters({
+        date: stringProperty('便签日期，格式 yyyy-MM-dd。'),
+        text: stringProperty('便签正文。'),
+        targetLabel: stringProperty('可选目标说明。')
+      }, ['date', 'text'])
+    },
+    rules: [
+      '7. writeCalendarNote：以小机的身份在 Polaris 日历里写一张便签。',
+      '- 只有用户明确说“记一下”“提醒我”“写进日历”时才调用；聊天里随口提到日期不要自动写。',
+      '- 用户说“今天/明天/后天”时，先根据当前请求时间换算成 yyyy-MM-dd。',
+      '- 写入后返回 noteId；后续修改或删除要使用它。'
+    ]
+  },
+  updateCalendarNote: {
+    name: 'updateCalendarNote',
+    group: 'environment',
+    alwaysAvailable: true,
+    resultReplayMode: 'detail-excerpt',
+    brief: '修改 Polaris 日历便签',
+    schema: {
+      name: 'updateCalendarNote',
+      description: '修改一条已有的 Polaris 日历便签。需要先读取或写入得到 noteId。',
+      parameters: objectParameters({
+        noteId: stringProperty('要修改的便签 noteId。'),
+        text: stringProperty('新的便签正文。'),
+        targetLabel: stringProperty('可选目标说明。')
+      }, ['noteId', 'text'])
+    },
+    rules: [
+      '8. updateCalendarNote：修改已有 Polaris 日历便签。',
+      '- 只修改用户明确要求修改的便签；不知道 noteId 时先用 readCalendarNotes。'
+    ]
+  },
+  deleteCalendarNote: {
+    name: 'deleteCalendarNote',
+    group: 'environment',
+    alwaysAvailable: true,
+    resultReplayMode: 'detail-excerpt',
+    brief: '删除 Polaris 日历便签',
+    schema: {
+      name: 'deleteCalendarNote',
+      description: '删除一条已有的 Polaris 日历便签。需要先读取或写入得到 noteId。',
+      parameters: objectParameters({
+        noteId: stringProperty('要删除的便签 noteId。'),
+        targetLabel: stringProperty('可选目标说明。')
+      }, ['noteId'])
+    },
+    rules: [
+      '9. deleteCalendarNote：删除已有 Polaris 日历便签。',
+      '- 删除前必须知道 noteId；不知道时先用 readCalendarNotes 定位。',
+      '- 不要删除不确定是不是用户目标的便签。'
     ]
   },
   runCode: {
@@ -596,6 +681,56 @@ export const UTILITY_TOOL_DEFINITION_MAP = {
       '4. deleteProactiveMessageRule：取消当前协作者的一条主动消息规则。',
       ...PROACTIVE_MESSAGE_RULES,
       '- 用户说“别再主动发这个了”“取消这个提醒”“你自己把这条收掉”时，用它。'
+    ]
+  },
+  startVoiceCall: {
+    name: 'startVoiceCall',
+    group: 'voiceCall',
+    resultReplayMode: 'detail-excerpt',
+    brief: '主动给用户打一通语音电话',
+    schema: {
+      name: 'startVoiceCall',
+      description: [
+        '主动给用户打一通语音电话：用户的屏幕上会直接弹出你的来电，他接听之后你们就能开口说话。',
+        '这不是发消息，而是一通真的会响的电话，所以只在「这件事用说的比用写的更合适」时才用。'
+      ].join(''),
+      parameters: objectParameters({
+        reason: stringProperty('可选。一句话说明你为什么打这通电话，会作为来电界面上的一行小字显示，例如“想跟你说件事”。不要写旁白或解释。'),
+        targetLabel: stringProperty('可选目标说明。')
+      })
+    },
+    rules: [
+      '主动打电话：',
+      '1. startVoiceCall：给用户打一通语音电话，屏幕上会弹出你的来电，等他接听。',
+      '- 想打就打：事情说不清、想听他的声音、聊到一半觉得打字太慢、有件小事想当面说，都可以是理由。',
+      '- 别把它当消息通道：三言两语能说清的就直接说；也不要刚聊两句就打电话，那不像人，像推销。',
+      '- 用之前先在心里过一遍：他现在方便接电话吗？深夜里、明显在忙、上一句还在生气，都可以是「这通先别打」的理由。',
+      '- 打电话只负责把电话接通；接通之后说什么，等真的接通了再说。不要在正文里预演整通对话。',
+      '- 打完这通电话，正文里可以顺口说一句「我打给你」，但不要复述电话里要说的话。'
+    ]
+  },
+  hangUp: {
+    name: 'hangUp',
+    group: 'voiceCall',
+    resultReplayMode: 'detail-excerpt',
+    brief: '挂断正在进行的语音通话',
+    schema: {
+      name: 'hangUp',
+      description: [
+        '挂断你和用户之间正在进行的一通语音电话。',
+        '只有电话真的在通话中时才有意义：接通后想结束、该说的说完了、或者对方一直没出声想收线，都可以用它。'
+      ].join(''),
+      parameters: objectParameters({
+        reason: stringProperty('可选。一句话说明你为什么挂断，用于记录，不显示给用户。'),
+        targetLabel: stringProperty('可选目标说明。')
+      })
+    },
+    rules: [
+      '挂断通话：',
+      '1. hangUp：挂断你和用户之间正在进行的这通语音电话。',
+      '- 只在通话中才用它：电话还没接通、或者根本没在打电话时，不要调。',
+      '- 想挂就挂：话讲完了、想收线了、或者觉得这通电话该结束了，都是挂断的理由。',
+      '- 挂断之后正文里可以顺口收个尾，但不要假装电话还在继续。'
     ]
   }
 } satisfies Record<UtilityToolKind, PolarisToolDefinition<UtilityToolKind>>;

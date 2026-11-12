@@ -16,6 +16,18 @@ const STAR_WARMTH_MIN = 0;
 const STAR_WARMTH_MAX = 1;
 export const DEFAULT_APP_STAR_COLOR = '#8edfff';
 
+/** Keep in sync with the `--voice-call-orb-color` fallback in voice-call.css. */
+export const DEFAULT_VOICE_CALL_ORB_COLOR = '#8f939a';
+
+export const VOICE_CALL_ORB_COLOR_SWATCHES = [
+  DEFAULT_VOICE_CALL_ORB_COLOR,
+  '#4f8ff7',
+  '#8b7cf6',
+  '#2fb8a8',
+  '#e874a8',
+  '#f0a05a'
+] as const;
+
 export const CUSTOM_FONT_SCOPES = ['global', 'titles', 'chat', 'cards'] as const satisfies readonly CustomFontScope[];
 
 export const DEFAULT_CUSTOM_FONT_SCOPE_ASSIGNMENTS: Record<CustomFontScope, string | null> = {
@@ -27,11 +39,16 @@ export const DEFAULT_CUSTOM_FONT_SCOPE_ASSIGNMENTS: Record<CustomFontScope, stri
 
 export const DEFAULT_APP_CUSTOMIZATION: AppCustomization = {
   showChatAvatars: false,
+  showCollaboratorName: true,
+  showMessageClock: true,
+  showModelName: true,
+  showTokenUsage: true,
   starColor: null,
   starOpacity: 0.98,
   starGlow: 0.46,
   starScale: 1,
   starWarmth: 0.54,
+  voiceCallOrbColor: null,
   backgroundAssetId: null,
   customFontAssetIds: [],
   customFontScopeAssignments: DEFAULT_CUSTOM_FONT_SCOPE_ASSIGNMENTS,
@@ -49,7 +66,7 @@ function normalizeBackgroundFit(value: unknown): AppBackgroundFit {
   return value === 'contain' ? 'contain' : 'cover';
 }
 
-function normalizeStarColor(value: unknown): string | null {
+function normalizeHexColor(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   const shortHex = /^#([0-9a-f]{3})$/i.exec(trimmed);
@@ -87,7 +104,11 @@ export function normalizeAppCustomization(
 
   return {
     showChatAvatars: customization?.showChatAvatars ?? DEFAULT_APP_CUSTOMIZATION.showChatAvatars,
-    starColor: normalizeStarColor(customization?.starColor),
+    showCollaboratorName: customization?.showCollaboratorName ?? DEFAULT_APP_CUSTOMIZATION.showCollaboratorName,
+    showMessageClock: customization?.showMessageClock ?? DEFAULT_APP_CUSTOMIZATION.showMessageClock,
+    showModelName: customization?.showModelName ?? DEFAULT_APP_CUSTOMIZATION.showModelName,
+    showTokenUsage: customization?.showTokenUsage ?? DEFAULT_APP_CUSTOMIZATION.showTokenUsage,
+    starColor: normalizeHexColor(customization?.starColor),
     starOpacity:
       typeof customization?.starOpacity === 'number'
         ? clamp(customization.starOpacity, STAR_OPACITY_MIN, STAR_OPACITY_MAX)
@@ -104,6 +125,7 @@ export function normalizeAppCustomization(
       typeof customization?.starWarmth === 'number'
         ? clamp(customization.starWarmth, STAR_WARMTH_MIN, STAR_WARMTH_MAX)
         : DEFAULT_APP_CUSTOMIZATION.starWarmth,
+    voiceCallOrbColor: normalizeHexColor(customization?.voiceCallOrbColor),
     backgroundAssetId:
       typeof customization?.backgroundAssetId === 'string' && customization.backgroundAssetId.trim()
         ? customization.backgroundAssetId.trim()

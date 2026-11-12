@@ -13,6 +13,7 @@ const allEnabled = {
   desktop: true,
   theme: true,
   attachment: true,
+  voice: true,
   generation: true,
   archive: true,
   web: true,
@@ -22,7 +23,8 @@ const allEnabled = {
   memory: true,
   memoryRecall: true,
   memoryWrite: true,
-  proactive: true
+  proactive: true,
+  voiceCall: true
 } satisfies Record<PolarisToolPromptGroup, boolean>;
 
 describe('menuToolboxGroups', () => {
@@ -32,6 +34,10 @@ describe('menuToolboxGroups', () => {
 
   it('shows desktop local tools only for the Mac host bridge', () => {
     expect(getVisibleToolboxPromptGroups({ desktopLocalAvailable: true })).toContain('desktop');
+  });
+
+  it('shows the voice group so the user can switch voice messages off', () => {
+    expect(getVisibleToolboxPromptGroups({ desktopLocalAvailable: false })).toContain('voice');
   });
 
   it('counts only visible enabled groups', () => {

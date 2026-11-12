@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { resolveChatGenerationActive, resolveChatMessageLifecycle, type ChatMessageLifecycle } from '../../../../app/chat/chatStreamingDisplay';
 import { resolveChatCardReference } from '../../../../app/collection/codeCollectionSource';
+import { clearVoiceMessageRequest, type VoiceMessageRequest } from '../../../../app/chat/voiceMessageRequestStore';
 import { resolveCodeCardPresentation } from '../../../../app/collection/codeCardPresentation';
 import { buildCodeCardPreview, inferCodeLanguage } from '../../../../engines/codeCardEngine';
 import type { ChatMessage, CodeCard, ConversationTaskState, Persona } from '../../../../types/domain';
@@ -19,13 +20,17 @@ import { useAssetObjectUrl } from '../../../useAssetObjectUrl';
 import { JumpToLatest } from './JumpToLatest';
 import { JumpToTop } from './JumpToTop';
 import { appendEnteringMessageIds } from './messageTimelineEntering';
+import { useVoiceMessageRequest } from './useVoiceMessageRequest';
+import { VoiceMessageConfirmRow } from './VoiceMessageConfirmRow';
 import { buildTimelineRenderItems } from './messageTimelineItems';
 import { buildTimelineTaskReceipts } from './messageTimelineTaskReceipts';
 import { TaskRuntimeCard, type TaskRuntimeExecutionSegment } from './TaskRuntimeCard';
 import { TaskRuntimeDock } from './TaskRuntimeDock';
 import { resolveTimelineWindow } from './messageTimelineWindow';
 import { useTimelineScroll } from './TimelineScroll';
+import { useIdleFade } from './useIdleFade';
 import { Icon } from '../../../Icon';
+import { ChaoticOrbitLoader } from '../../../shell/ChaoticOrbitLoader';
 import { CodeRunFullscreen } from '../../../collection/workshop/CodeRunFullscreen';
 import { TextReadingFullscreen } from '../../../collection/workshop/TextReadingFullscreen';
 
@@ -141,6 +146,24 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
     isActiveWorld: presentation.isActiveWorld,
     isWorldSettled
   });
+  // 浮在内容上的上下箭头：静置 2 秒淡出，摸一下屏幕再回来。
+  const jumpControlsVisible = useIdleFade(2000);
+  const jumpControlsFaded = !jumpControlsVisible;
+  // 「小机想发语音」的申请：有就在流末尾递一张确认卡片，点了「允许」才合成。
+  const voiceRequest = useVoiceMessageRequest(conversationId);
+  const voiceRequestId = voiceRequest?.id ?? null;
+  const previousVoiceRequestIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const previousId = previousVoiceRequestIdRef.current;
+    previousVoiceRequestIdRef.current = voiceRequestId;
+    if (!voiceRequestId || voiceRequestId === previousId) return;
+    // 生成中不抢滚动：回复落地时本来就会贴底，那会儿卡片正好露出来。
+    if (isGenerationActive) return;
+    if (!presentation.isActiveWorld || !isWorldSettled) return;
+    // 用户主动翻上去看历史的时候，别把他拽回来。
+    if (followMode === 'manual') return;
+    jumpToLatest();
+  }, [voiceRequestId, isGenerationActive, followMode, isWorldSettled, presentation.isActiveWorld, jumpToLatest]);
   const measureTimelineViewport = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -227,6 +250,15 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
       presentation: cardPresentation
     });
   }, []);
+
+  const dismissVoiceRequest = useCallback((request: VoiceMessageRequest) => {
+    clearVoiceMessageRequest(request.id);
+  }, []);
+
+  const allowVoiceRequest = useCallback(async (request: VoiceMessageRequest) => {
+    // 用户点了「允许」：从这里开始才真的调语音接口（额度闸门在卡片上，不在模型手里）。
+    await actions.allowVoiceMessage(request);
+  }, [actions.allowVoiceMessage]);
 
   const clearEnteringTimeout = (messageId: string) => {
     const timeoutId = enteringTimeoutsRef.current.get(messageId);
@@ -414,12 +446,14 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
     cancelEdit: actions.cancelEdit,
     toggleThinkingCollapsed: actions.toggleThinkingCollapsed,
     openThinkingSummary: actions.openThinkingSummary,
+    toggleThinkingSummary: actions.toggleThinkingSummary,
     saveImageAttachment: actions.saveImageAttachment,
     toggleCodeExpanded: actions.toggleCodeExpanded,
     applyCustomCss: actions.applyCustomCss,
     codeCardAction: actions.codeCardAction,
     retry: actions.retry,
     editMessage: actions.editMessage,
+    deleteMessageTurn: actions.deleteMessageTurn,
     editAssistantMessage: actions.editAssistantMessage,
     cacheAssistantSpeech: actions.cacheAssistantSpeech,
     forkFromMessage: actions.forkFromMessage,
@@ -439,10 +473,12 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
     actions.cacheAssistantSpeech,
     actions.editAssistantMessage,
     actions.editMessage,
+    actions.deleteMessageTurn,
     actions.forkFromMessage,
     actions.openCodeCard,
     actions.openToolbox,
     actions.openThinkingSummary,
+    actions.toggleThinkingSummary,
     actions.setCommandStatus,
     actions.removeEditingAttachment,
     actions.retry,
@@ -464,7 +500,7 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
       >
         {!presentation.startupReady ? (
           <div className="chat-empty-state empty-state-floating">
-            <span className="empty-state-icon" aria-hidden="true">✦</span>
+            <ChaoticOrbitLoader size={30} />
             <p className="empty-state-title">{t('chat.timeline.loadingConversation')}</p>
           </div>
         ) : null}
@@ -487,8 +523,12 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
         {timelineWindow.topSpacerHeight > 0 ? (
           <div className="chat-flow-spacer" aria-hidden="true" style={{ height: `${timelineWindow.topSpacerHeight}px` }} />
         ) : null}
-        {timelineWindow.visibleItems.map(({ message, toolMessages, messageCycleIndex, userBubbleIndex, isAssistantContinuation, isTerminalAssistantInUserTurn }) => {
+        {timelineWindow.visibleItems.map(({ message, toolMessages, thinkingTimelineMessages, ownsThinkingTimeline, messageCycleIndex, userBubbleIndex, isAssistantContinuation, isTerminalAssistantInUserTurn }) => {
           const taskReceipt = taskReceiptsByMessageId.get(message.id) ?? null;
+          const isThinkingTimelineActive = thinkingTimelineMessages.some((timelineMessage) => (
+            timelineMessage.id === ui.streaming?.messageId
+            || timelineMessage.toolInvocation?.status === 'running'
+          ));
           const lifecycle: ChatMessageLifecycle = resolveChatMessageLifecycle({
             messageId: message.id,
             streaming: ui.streaming,
@@ -506,6 +546,7 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
             isFocused: ui.focusedMessageId === message.id,
             lifecycle,
             isThinkingCollapsed: collapsedThinkingIds.has(message.id),
+            isThinkingSummaryOpen: ui.thinkingSummaryMessageId === message.id,
             isCodeExpanded: expandedCodeIds.has(message.id),
             canEdit: message.role === 'user' && !message.toolInvocation && !ui.sending,
             canEditAssistant: canUseAssistantMore,
@@ -527,6 +568,10 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
                 assistantAvatarSize={stablePayload.persona?.assistantAvatarSize ?? 'medium'}
                 assistantSigilSeed={presentation.activeCollaboratorId}
                 showChatAvatars={presentation.showChatAvatars}
+                showCollaboratorName={presentation.showCollaboratorName}
+                showMessageClock={presentation.showMessageClock}
+                showModelName={presentation.showModelName}
+                showTokenUsage={presentation.showTokenUsage}
                 showThinking={ui.showThinking}
                 state={rowState}
                 actions={rowActions}
@@ -535,6 +580,9 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
                 userAvatarShape={stablePayload.persona?.userAvatarShape ?? 'circle'}
                 userAvatarSize={stablePayload.persona?.userAvatarSize ?? 'medium'}
                 toolMessages={toolMessages}
+                thinkingTimelineMessages={thinkingTimelineMessages}
+                ownsThinkingTimeline={ownsThinkingTimeline}
+                isThinkingTimelineActive={isThinkingTimelineActive}
                 codeCardsById={codeCardsById}
                 userBubbleIndex={userBubbleIndex}
                 isAssistantContinuation={isAssistantContinuation}
@@ -562,6 +610,14 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
         {timelineWindow.bottomSpacerHeight > 0 ? (
           <div className="chat-flow-spacer" aria-hidden="true" style={{ height: `${timelineWindow.bottomSpacerHeight}px` }} />
         ) : null}
+        {voiceRequest ? (
+          <VoiceMessageConfirmRow
+            key={voiceRequest.id}
+            request={voiceRequest}
+            onAllow={allowVoiceRequest}
+            onDismiss={dismissVoiceRequest}
+          />
+        ) : null}
         {ui.showLiveThinking ? (
           <div className="thinking-live">{t('chat.timeline.thinkingLive')}<span>.</span><span>.</span><span>.</span></div>
         ) : null}
@@ -576,6 +632,7 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
           justCompleted={taskJustCompleted}
           showJumpToLatest={showJumpToLatest}
           showJumpToTop={showJumpToTop}
+          jumpControlsFaded={jumpControlsFaded}
           onToggleCollapsed={() => setIsTaskDockCollapsed((current) => !current)}
           onJumpToLatest={jumpToLatest}
           onJumpToTop={jumpToTop}
@@ -583,8 +640,8 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
       ) : showJumpToTop || showJumpToLatest ? (
         <div className="chat-floating-controls">
           <div className="chat-floating-controls-stack">
-            {showJumpToTop ? <JumpToTop onClick={jumpToTop} /> : null}
-            {showJumpToLatest ? <JumpToLatest onClick={jumpToLatest} /> : null}
+            {showJumpToTop ? <JumpToTop onClick={jumpToTop} className={jumpControlsFaded ? 'idle-faded' : ''} /> : null}
+            {showJumpToLatest ? <JumpToLatest onClick={jumpToLatest} className={jumpControlsFaded ? 'idle-faded' : ''} /> : null}
           </div>
         </div>
       ) : null}
@@ -608,3 +665,5 @@ export function MessageTimeline({ isWorldSettled }: MessageTimelineProps) {
     </div>
   );
 }
+
+

@@ -49,4 +49,53 @@ describe('MessageMeta', () => {
     expect(html).toContain('小助手');
     expect(html).not.toContain('Polaris');
   });
+
+  it('renders the thinking entry as a labelled row with clock and chevron', () => {
+    const html = renderToStaticMarkup(
+      <MessageMeta
+        message={createAssistantMessage()}
+        fallbackAssistantName="小助手"
+        isThinkingActive={false}
+        onOpenThinkingSummary={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('thinking-inline-trigger');
+    expect(html).toContain('thinking-inline-label');
+    expect(html).toContain('thinking-inline-chevron');
+    expect(html).toContain('Thinking...');
+  });
+
+  it('keeps the fold row label plain while thinking is active (no flowing excerpt)', () => {
+    const html = renderToStaticMarkup(
+      <MessageMeta
+        message={createAssistantMessage({
+          thinkingText: '第一段先确认目标。第二段再想路径。第三段收尾。'
+        })}
+        fallbackAssistantName="小助手"
+        isThinkingActive
+        onOpenThinkingSummary={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('Thinking...');
+    expect(html).not.toContain('第三段收尾。');
+    expect(html).not.toContain('第一段先确认目标');
+  });
+
+  it('marks a row with only thinking so the chevron can stay right', () => {
+    const html = renderToStaticMarkup(
+      <MessageMeta
+        message={createAssistantMessage()}
+        fallbackAssistantName="小助手"
+        isThinkingActive={false}
+        onOpenThinkingSummary={vi.fn()}
+        showName={false}
+        showModel={false}
+        showTokenUsage={false}
+      />
+    );
+
+    expect(html).toContain('message-identity-row thinking-only');
+  });
 });

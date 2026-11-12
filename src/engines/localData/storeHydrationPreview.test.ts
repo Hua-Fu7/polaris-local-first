@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { createPersonaTemplate } from '../../config/persona/personaBuilder';
 import { DEFAULT_APP_CUSTOMIZATION } from '../../stores/runtimeStoreCustomization';
 import { DEFAULT_COMPANION_HOST_STATE } from '../../stores/runtimeStoreCompanion';

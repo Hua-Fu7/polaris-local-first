@@ -1,36 +1,22 @@
 import { useRef } from 'react';
 import { COLLECTION_FRONTSTAGE_SURFACES } from '../frontstage/frontstageSurfaceRegistry';
-import type { World } from '../../types/domain';
-import { WorldMark } from './WorldMark';
-import { displayTitleClassName } from '../titleTypography';
 
 const SECRET_LONG_PRESS_MS = 1_200;
 
 type WorldAnchorProps = {
-  activeWorld: World;
-  title: string;
-  titleTone: 'brand' | 'collaborator';
-  aggregateCollectionScope: boolean;
-  worldLabel: string;
-  worldDetail: string | null;
-  showWorldLabel: boolean;
-  showTitle: boolean;
-  spinning: boolean;
   switchLabel: string;
   onToggleWorld: (trigger: HTMLElement | null) => void;
   onSecretLongPress: () => void;
 };
 
+/**
+ * Invisible topbar interaction surface.
+ *
+ * The product now keeps the main-page topbar visually empty. This button keeps
+ * the legacy world toggle and long-press sandbox entry reachable without
+ * rendering the former collaborator title, metadata, or star mark.
+ */
 export function WorldAnchor({
-  activeWorld,
-  title,
-  titleTone,
-  aggregateCollectionScope,
-  worldLabel,
-  worldDetail,
-  showWorldLabel,
-  showTitle,
-  spinning,
   switchLabel,
   onToggleWorld,
   onSecretLongPress
@@ -69,36 +55,14 @@ export function WorldAnchor({
 
   return (
     <button
-      className={`brand-trigger world-anchor ${aggregateCollectionScope ? 'world-anchor--aggregate' : ''}`}
+      className="brand-trigger world-anchor world-anchor--bare"
       data-surface={COLLECTION_FRONTSTAGE_SURFACES.worldAnchor}
-      data-title-tone={titleTone}
       onClick={(event) => handleClick(event.currentTarget)}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerEnd}
       onPointerLeave={handlePointerEnd}
       onPointerCancel={handlePointerEnd}
       aria-label={switchLabel}
-    >
-      <WorldMark
-        world={activeWorld}
-        spinning={spinning}
-        className="brand-world-mark"
-      />
-      <div className={`brand ${showTitle ? '' : 'brand-label-only'}`}>
-        {showTitle ? <h1 className={displayTitleClassName(title)}>{title}</h1> : null}
-        {showWorldLabel ? (
-          <p className={showTitle ? undefined : 'brand-label-only-copy'}>
-            <span className="pulse-dot" />
-            <span className="brand-meta-label">{worldLabel}</span>
-            {worldDetail ? (
-              <>
-                <span className="brand-meta-sep">·</span>
-                <span className="brand-meta-detail">{worldDetail}</span>
-              </>
-            ) : null}
-          </p>
-        ) : null}
-      </div>
-    </button>
+    />
   );
 }

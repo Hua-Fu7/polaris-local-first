@@ -181,7 +181,7 @@ describe('assistantToolProtocolRequestTools', () => {
     expect(result.tools.some((tool) => tool.function.name === 'readProjectFile')).toBe(true);
   });
 
-  it('hides every request tool when the user closes every toolbox group', () => {
+  it('keeps always-available calendar tools when the user closes every toolbox group', () => {
     const result = resolveAssistantToolRequestTools({
       taskMode: 'active',
       themeToolMode: 'stable',
@@ -203,15 +203,22 @@ describe('assistantToolProtocolRequestTools', () => {
         memory: false,
         memoryRecall: false,
         memoryWrite: false,
-        proactive: false
+        proactive: false,
+        voice: false,voiceCall: false
       },
       activeCard: null,
       visibleCards: [],
       activeProject: workspaceSnapshot()
     });
 
-    expect(result.tools).toEqual([]);
-    expect(result.toolChoice).toBeUndefined();
+    expect(result.tools).toHaveLength(4);
+    expect(result.tools.map((tool) => tool.function.name)).toEqual(expect.arrayContaining([
+      'readCalendarNotes',
+      'writeCalendarNote',
+      'updateCalendarNote',
+      'deleteCalendarNote'
+    ]));
+    expect(result.toolChoice).toBe('auto');
   });
 
   it('keeps tool choice automatic while forced mode scopes available tools', () => {

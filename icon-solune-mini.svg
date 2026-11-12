@@ -1,0 +1,20 @@
+<svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <mask id="crescent">
+      <circle cx="0" cy="0" r="120" fill="#fff"/>
+      <circle cx="-44" cy="-18" r="104" fill="#000"/>
+    </mask>
+    <g id="ray" fill="#F3E6C8" stroke="#F3E6C8" stroke-width="14" stroke-linecap="round">
+      <line x1="0" y1="-200" x2="0" y2="-300"/>
+      <circle cx="0" cy="-350" r="16" stroke="none"/>
+    </g>
+  </defs>
+  <g transform="translate(500 500) scale(__GLYPH_SCALE__)" color="#F3E6C8">
+    <circle cx="0" cy="0" r="185" fill="none" stroke="#F3E6C8" stroke-width="18" stroke-linecap="round" stroke-dasharray="0 34"/>
+    <circle cx="0" cy="0" r="120" fill="#F3E6C8" mask="url(#crescent)"/>
+    <use href="#ray"/>
+    <use href="#ray" transform="rotate(90)"/>
+    <use href="#ray" transform="rotate(180)"/>
+    <use href="#ray" transform="rotate(270)"/>
+  </g>
+</svg>

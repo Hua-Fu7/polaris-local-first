@@ -13,11 +13,16 @@ export type AttachmentsToolAction = Extract<
       | 'createCalendarEvent'
       | 'updateCalendarEvent'
       | 'deleteCalendarEvent'
+      | 'readCalendarNotes'
+      | 'writeCalendarNote'
+      | 'updateCalendarNote'
+      | 'deleteCalendarNote'
       | 'readAttachmentText'
       | 'bundleAttachments'
       | 'createQrCode'
       | 'generateImage'
       | 'sendImageAttachment'
+      | 'sendVoiceMessage'
       | 'inspectImageAsset'
       | 'extractImagePalette'
       | 'createImageVariant'
@@ -95,6 +100,34 @@ export function describeAttachmentsToolAction(action: AttachmentsToolAction): To
         summary: `删除日程 · ${action.targetLabel ?? action.eventId}`,
         targetLabel: action.targetLabel ?? action.eventId
       };
+    case 'readCalendarNotes':
+      return {
+        kind: action.kind,
+        title: '读取日历便签',
+        summary: '读取 Polaris 日历便签',
+        targetLabel: action.targetLabel
+      };
+    case 'writeCalendarNote':
+      return {
+        kind: action.kind,
+        title: '写入日历便签',
+        summary: `写入 ${action.date} 的日历便签`,
+        targetLabel: action.targetLabel ?? action.date
+      };
+    case 'updateCalendarNote':
+      return {
+        kind: action.kind,
+        title: '修改日历便签',
+        summary: `修改日历便签 · ${action.noteId}`,
+        targetLabel: action.targetLabel ?? action.noteId
+      };
+    case 'deleteCalendarNote':
+      return {
+        kind: action.kind,
+        title: '删除日历便签',
+        summary: `删除日历便签 · ${action.noteId}`,
+        targetLabel: action.targetLabel ?? action.noteId
+      };
     case 'readAttachmentText':
       return {
         kind: action.kind,
@@ -129,6 +162,13 @@ export function describeAttachmentsToolAction(action: AttachmentsToolAction): To
         title: '发送图片',
         summary: `发送已有图片${action.targetLabel ? ` · ${action.targetLabel}` : action.target ? ` · ${action.target}` : ''}`,
         targetLabel: action.targetLabel ?? action.title ?? action.target
+      };
+    case 'sendVoiceMessage':
+      return {
+        kind: action.kind,
+        title: '发语音',
+        summary: action.text ? `发一条语音 · ${action.text}` : '发一条语音',
+        targetLabel: action.targetLabel ?? action.text
       };
     case 'inspectImageAsset':
       return {

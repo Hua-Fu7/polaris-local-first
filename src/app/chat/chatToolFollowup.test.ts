@@ -163,6 +163,24 @@ describe('resolveToolFollowupPlan', () => {
       assistantToolOnlyTurn: true
     })).not.toBeNull();
   });
+
+  it('stops after a voice call is dialed out so the model waits for answer/decline instead of talking over the ring', () => {
+    const outcome = executedOutcome({
+      action: { kind: 'startVoiceCall', reason: '想跟你说件事' }
+    });
+
+    expect(resolveToolFollowupPlan({ outcomes: [outcome] })).toBeNull();
+    // 即使是在「纯工具回合」里拨号，也不该再补一段正文。
+    expect(resolveToolFollowupPlan({ outcomes: [outcome], assistantToolOnlyTurn: true })).toBeNull();
+  });
+
+  it('still lets a hang-up settle into a short followup', () => {
+    const outcome = executedOutcome({
+      action: { kind: 'hangUp', reason: '说完就挂' }
+    });
+
+    expect(resolveToolFollowupPlan({ outcomes: [outcome] })).not.toBeNull();
+  });
 });
 
 describe('tool followup recovery controls', () => {

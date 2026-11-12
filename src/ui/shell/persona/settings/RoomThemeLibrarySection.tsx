@@ -1,6 +1,6 @@
+import { useEffect, useRef } from 'react';
 import type { useThemeStudioController } from '../../../../app/theme/useThemeStudioController';
-import { SavedSkinsSection } from '../../../sheets/themeStudio/SavedSkinsSection';
-import { ThemeHistorySection } from '../../../sheets/themeStudio/ThemeHistorySection';
+import { RoomThemeTuneSection } from './RoomThemeTuneSection';
 
 type ThemeStudioController = ReturnType<typeof useThemeStudioController>;
 
@@ -9,33 +9,26 @@ type RoomThemeLibrarySectionProps = {
 };
 
 export function RoomThemeLibrarySection({ controller }: RoomThemeLibrarySectionProps) {
+  const clearedHistoryRef = useRef(false);
+
+  useEffect(() => {
+    if (clearedHistoryRef.current) return;
+    clearedHistoryRef.current = true;
+    if (controller.theme.skinHistory.length > 0) {
+      controller.themeSession.clearSkinHistory();
+    }
+  }, [controller.theme.skinHistory.length, controller.themeSession]);
+
   return (
     <div className="room-theme-library-page">
-      <SavedSkinsSection
+      <RoomThemeTuneSection
         theme={controller.theme}
-        saveName={controller.saveName}
-        copyFeedback={controller.savedSkinCopyFeedback}
-        exportFeedback={controller.savedSkinExportFeedback}
-        onSaveNameChange={controller.setSaveName}
+        onChangeCustomCSS={controller.themeSession.setCustomCSS}
         onSaveCurrentSkin={() => {
           const nextName = controller.saveName.trim() || controller.defaultSkinName;
-          const savedSkin = controller.saveCurrentSkin(nextName);
-          if (!savedSkin) return;
+          controller.saveCurrentSkin(nextName);
           controller.resetSaveName();
         }}
-        onApplySavedSkin={controller.themeSession.applySavedSkin}
-        onRenameSavedSkin={controller.renameSavedSkin}
-        onUpdateSavedSkinCss={controller.updateSavedSkinCss}
-        onCopySavedSkinFile={(savedSkinId) => { void controller.handleCopySavedSkinFile(savedSkinId); }}
-        onExportSavedSkinFile={controller.handleExportSavedSkinFile}
-        onDeleteSavedSkin={controller.deleteSavedSkin}
-        getSavedSkinTargetSummary={controller.getSavedSkinTargetSummary}
-        getSavedSkinEditableCss={controller.getSavedSkinEditableCss}
-      />
-
-      <ThemeHistorySection
-        skinHistory={controller.theme.skinHistory}
-        onRestoreSkinSnapshot={controller.themeSession.restoreSkinSnapshot}
       />
     </div>
   );

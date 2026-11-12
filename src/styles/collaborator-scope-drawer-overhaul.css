@@ -1,0 +1,377 @@
+/*
+ * 2026-09-28：把已有的协作者大窗改成主菜单。
+ * 紧凑行承载创建 / 群聊 / 全部协作者 / 工作区 / 卡片 / 图片；
+ * “全部协作者”只负责展开嵌套列表，不再承载聚合筛选。
+ */
+.collaborator-scope-drawer-list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  gap: 2px;
+  padding-right: 2px;
+}
+
+.collaborator-scope-compact-row,
+.collaborator-scope-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: var(--type-body);
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.collaborator-scope-compact-row:active,
+.collaborator-scope-nav-row:active,
+.collaborator-scope-collaborator-row:active,
+.collaborator-scope-chat-row:active {
+  opacity: 0.62;
+}
+
+.collaborator-scope-compact-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: inherit;
+}
+
+.collaborator-scope-compact-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collaborator-scope-compact-chevron {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  transition: transform 180ms ease;
+}
+
+.collaborator-scope-compact-chevron.is-open {
+  transform: rotate(90deg);
+}
+
+.collaborator-scope-collaborator-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 0 4px 27px;
+}
+
+.collaborator-scope-collaborator-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.collaborator-scope-collaborator-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: var(--type-small);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.collaborator-scope-collaborator-row.is-active {
+  color: var(--text);
+}
+
+.collaborator-scope-collaborator-mark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: inherit;
+}
+
+.collaborator-scope-collaborator-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collaborator-scope-collaborator-count {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: var(--type-tiny);
+}
+
+.collaborator-scope-collaborator-shell .collaborator-scope-card-pin {
+  position: static;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  margin-left: 2px;
+}
+
+.collaborator-scope-nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+}
+
+.collaborator-scope-nav-row.is-active {
+  color: var(--text);
+}
+
+.collaborator-scope-chat-section {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
+}
+
+.collaborator-scope-chat-label {
+  margin: 0 0 4px;
+  padding: 0 2px;
+  color: var(--text-muted);
+  font-size: var(--type-tiny);
+  letter-spacing: 0.04em;
+}
+
+.collaborator-scope-chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.collaborator-scope-chat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 2px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.collaborator-scope-chat-date {
+  color: var(--text-muted);
+  font-size: var(--type-tiny);
+}
+
+.collaborator-scope-chat-title {
+  overflow: hidden;
+  color: var(--text-soft);
+  font-size: var(--type-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collaborator-scope-chat-row.is-active .collaborator-scope-chat-title {
+  color: var(--text);
+}
+
+.collaborator-scope-chat-empty {
+  margin: 0;
+  padding: 8px 2px;
+  color: var(--text-muted);
+  font-size: var(--type-small);
+}
+.collaborator-scope-current-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--type-body);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.collaborator-scope-current-row:active {
+  opacity: 0.62;
+}
+
+.collaborator-scope-settings-view {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.collaborator-scope-settings-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 20px 0 8px;
+  color: var(--text);
+}
+
+.collaborator-scope-settings-head strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--type-body);
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collaborator-scope-settings-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transform: rotate(180deg);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.collaborator-scope-settings-back:active {
+  opacity: 0.6;
+}
+
+.collaborator-scope-settings-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 2px max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+}
+
+.collaborator-scope-settings-scroll .collaborator-info-detail-shell {
+  width: 100%;
+  margin: 0;
+  border-radius: 0;
+}
+
+.collaborator-scope-settings-scroll .collaborator-info-nav {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.thinking-summary-list--plain {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.thinking-summary-step--plain {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.collaborator-scope-chat-row--editing {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 2px;
+}
+
+.collaborator-scope-chat-row--editing .collaborator-scope-chat-date,
+.collaborator-scope-chat-row--editing .collaborator-scope-chat-title {
+  min-width: 0;
+}
+
+.collaborator-scope-chat-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.collaborator-scope-chat-actions button,
+.collaborator-scope-chat-rename button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.collaborator-scope-chat-actions button.is-active {
+  color: var(--accent);
+}
+
+.collaborator-scope-chat-actions button:active,
+.collaborator-scope-chat-rename button:active {
+  opacity: 0.6;
+}
+
+.collaborator-scope-chat-rename {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.collaborator-scope-chat-rename input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--border-hover) 72%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--type-small);
+  outline: none;
+}
+
+
+.collaborator-scope-unread-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  margin-right: 2px;
+  border-radius: 50%;
+  background: #e5628a;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #e5628a 16%, transparent);
+}

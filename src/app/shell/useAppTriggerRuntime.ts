@@ -10,6 +10,7 @@ import {
 import { createCompanionPersonaProjection } from '../../engines/companion';
 import type { ChatStreamingState, ChatUiReplyControllerState, ChatUiToolState } from '../chat/chatPorts';
 import { useChatTriggerRuntime } from '../chat/useChatTriggerRuntime';
+import { useProactivePlanRuntime } from '../chat/useProactivePlanRuntime';
 import { useAppTriggerShortcutRuntime } from './useAppTriggerShortcutRuntime';
 import { useNativeTriggerNotifications } from './useNativeTriggerNotifications';
 import { selectChatConversations } from '../chat/liveConversationCatalog';
@@ -92,6 +93,17 @@ export function useAppTriggerRuntime({ chatRuntime, startupReady }: UseAppTrigge
     createToolActions: (scopedDerived) => createChatToolActions({ ui: chatRuntime, store: toolStore, derived: scopedDerived })
   });
 
+  useProactivePlanRuntime({
+    startupReady: triggerRuntimeReady,
+    conversations: liveConversations,
+    personas: collaborators,
+    triggerRules: store.runtime.triggerRules,
+    globalApi: store.runtime.api,
+    providers: store.runtime.providers,
+    createTriggerRule: store.runtime.createTriggerRule,
+    updateTriggerRule: store.runtime.updateTriggerRule,
+    deleteTriggerRule: store.runtime.deleteTriggerRule
+  });
   useChatTriggerRuntime({
     startupReady: triggerRuntimeReady,
     generationByConversationId: chatRuntime.generationByConversationId,

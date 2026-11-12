@@ -7,6 +7,7 @@ import { PromptSettingsTab } from '../../shell/persona/settings/PromptSettingsTa
 import { RequestSettingsTab } from '../../shell/persona/settings/RequestSettingsTab';
 import { RoomSettingsTab } from '../../shell/persona/settings/RoomSettingsTab';
 import { AutomationRulesPanel } from '../../shell/menu/AutomationRulesPanel';
+import { ProactiveContactPanel } from '../../shell/menu/ProactiveContactPanel';
 import type { PersonaUpdatePatch } from '../../shell/persona/personaUiShared';
 import { CollaboratorOverviewRail } from './CollaboratorOverviewRail';
 import { CollaboratorCreatePicker } from '../../worlds/chat/collaborator/CollaboratorCreatePicker';
@@ -32,6 +33,7 @@ type CollaboratorInfoShelfProps = {
   currentCollaboratorId: string | null;
   currentCollaborator: Persona | null;
   fullscreenOpen: boolean;
+  initialTab?: CollaboratorInfoTab;
   showChatAvatars: boolean;
   providers: ProviderProfile[];
   activeProviderId: string | null;
@@ -51,11 +53,15 @@ type CollaboratorInfoShelfProps = {
   onOpenProviderSettings: () => void;
   onCreateTriggerRule: (seed: {
     collaboratorId: string;
+    mode?: PolarisTriggerRule['mode'];
     conversationMode?: PolarisTriggerRule['target']['conversationMode'];
     conversationId?: string | null;
     schedule: PolarisTriggerSchedule;
     prompt: string;
     name?: string;
+    proactiveSettings?: PolarisTriggerRule['proactiveSettings'];
+    sourceMessageId?: string;
+    nextRunAt?: number | null;
   }) => string | null;
   onUpdateTriggerRule: (ruleId: string, patch: Partial<PolarisTriggerRule>) => void;
   onDeleteTriggerRule: (ruleId: string) => void;
@@ -70,6 +76,7 @@ export function CollaboratorInfoShelf({
   currentCollaboratorId,
   currentCollaborator,
   fullscreenOpen,
+  initialTab = 'identity',
   showChatAvatars,
   providers,
   activeProviderId,
@@ -96,15 +103,15 @@ export function CollaboratorInfoShelf({
   onUpdateMcpServer
 }: CollaboratorInfoShelfProps) {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState<CollaboratorInfoTab>('identity');
+  const [activeTab, setActiveTab] = useState<CollaboratorInfoTab>(initialTab);
   const [createPickerOpen, setCreatePickerOpen] = useState(false);
   const visibleTabs = isProductGuidePersona(currentCollaborator) ? PRODUCT_GUIDE_INFO_TABS : INFO_TABS;
   const isCompanionCollaborator = isCompanionCollaboratorId(currentCollaboratorId);
   const collaboratorName = currentCollaborator?.name.trim() || t('collaborator.info.fallbackName');
 
   useEffect(() => {
-    setActiveTab('identity');
-  }, [currentCollaboratorId]);
+    setActiveTab(initialTab);
+  }, [currentCollaboratorId, initialTab]);
 
   useEffect(() => {
     if (!visibleTabs.some((tab) => tab === activeTab)) {
@@ -176,7 +183,7 @@ export function CollaboratorInfoShelf({
         </div>
 
         <div className="ps-content collaborator-info-content">
-          <div className="ps-section">
+          <div className={`ps-section ${activeTab === 'room' ? 'ps-section--theme-library' : '' }`.trim()}>
             {activeTab === 'identity' && (
               <BasicSettingsTab
                 activeCollaboratorId={currentCollaboratorId}
@@ -247,23 +254,34 @@ export function CollaboratorInfoShelf({
                 onUpdatePersona={onUpdateCollaborator}
               />
             )}
-            {activeTab === 'automation' && (
-              <AutomationRulesPanel
-                personas={[currentCollaborator]}
-                conversations={conversations}
-                triggerRules={triggerRules}
-                lockedCollaboratorId={currentCollaboratorId}
-                emptyTitle={t('settings.automation.collaboratorEmptyTitle')}
-                emptyActionLabel={t('settings.automation.collaboratorEmptyAction')}
-                formNote={t('settings.automation.collaboratorFormNote')}
-                rulesNote={t('settings.automation.collaboratorRulesNote')}
-                onCreateTriggerRule={onCreateTriggerRule}
-                onUpdateTriggerRule={onUpdateTriggerRule}
-                onDeleteTriggerRule={onDeleteTriggerRule}
-                onTestTriggerRule={onTestTriggerRule}
-                onCopyTriggerUrl={onCopyTriggerUrl}
-              />
-            )}
+            {activeTab === 'automation' && currentCollaborator ? (
+              <>
+                <ProactiveContactPanel
+                  collaborator={currentCollaborator}
+                  triggerRules={triggerRules}
+                  onCreateTriggerRule={onCreateTriggerRule}
+                  onUpdateTriggerRule={onUpdateTriggerRule}
+                />
+                <details className="automation-advanced-rules">
+                  <summary>高级：定时 / 快捷指令规则</summary>
+                  <AutomationRulesPanel
+                    personas={[currentCollaborator]}
+                    conversations={conversations}
+                    triggerRules={triggerRules}
+                    lockedCollaboratorId={currentCollaboratorId}
+                    emptyTitle={t('settings.automation.collaboratorEmptyTitle')}
+                    emptyActionLabel={t('settings.automation.collaboratorEmptyAction')}
+                    formNote={t('settings.automation.collaboratorFormNote')}
+                    rulesNote={t('settings.automation.collaboratorRulesNote')}
+                    onCreateTriggerRule={onCreateTriggerRule}
+                    onUpdateTriggerRule={onUpdateTriggerRule}
+                    onDeleteTriggerRule={onDeleteTriggerRule}
+                    onTestTriggerRule={onTestTriggerRule}
+                    onCopyTriggerUrl={onCopyTriggerUrl}
+                  />
+                </details>
+              </>
+            ) : null}
             {activeTab === 'request' && (
               <RequestSettingsTab
                 activeCollaboratorId={currentCollaboratorId}
@@ -284,3 +302,5 @@ export function CollaboratorInfoShelf({
     </section>
   );
 }
+
+

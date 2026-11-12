@@ -46,4 +46,14 @@ describe('mergeDisplayPreferencesPatch', () => {
       fontScale: 0.9
     });
   });
+
+  it('patches a single field without disturbing the others', () => {
+    expect(mergeDisplayPreferencesPatch(DEFAULT_DISPLAY_PREFERENCES, {
+      hapticsEnabled: true
+    })).toEqual({
+      appearance: 'system',
+      hapticsEnabled: true,
+      fontScale: 1
+    });
+  });
 });

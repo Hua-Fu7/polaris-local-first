@@ -15,6 +15,7 @@ export type PolarisRegistryToolGroup =
   | 'theme-stable'
   | 'theme-creative'
   | 'attachment'
+  | 'voice'
   | 'generation'
   | 'archive'
   | 'web'
@@ -23,7 +24,8 @@ export type PolarisRegistryToolGroup =
   | 'memoryRecall'
   | 'knowledge'
   | 'memoryWrite'
-  | 'proactive';
+  | 'proactive'
+  | 'voiceCall';
 
 export type PolarisToolResultReplayMode =
   | 'full-detail'
@@ -39,6 +41,7 @@ export type PolarisToolDefinition<TName extends string = string> = {
   brief: string;
   schema: ToolSchema;
   exposeAsNative?: boolean;
+  alwaysAvailable?: boolean;
   rules?: string[];
   buildRules?: (context?: ToolPromptContext) => string[];
 };

@@ -3,12 +3,10 @@ import { AppShellView } from './app-shell/AppShellView';
 import { useAppRuntime } from './app-shell/useAppRuntime';
 import { useAppShellController } from './app-shell/useAppShellController';
 import { useAppShellViewController } from './app-shell/useAppShellViewController';
-import { WorldSwitchVeil } from './shell/WorldSwitchVeil';
 import { ScreenshotDebugOverlay } from './ScreenshotDebugOverlay';
 import { RequestDebugOverlay } from './RequestDebugOverlay';
 import { closeDebugSurfaces } from './developer/debugSurfaceState';
 import { useSpaceStore } from '../stores/spaceStore';
-import { shouldShowWorldSwitchVeil } from '../app/shell/worldSwitchVeilVisibility';
 
 const AssetGovernanceDebugLayer = lazy(() =>
   import('./AssetGovernanceDebugLayer').then((module) => ({ default: module.AssetGovernanceDebugLayer }))
@@ -35,15 +33,6 @@ export function AppShell() {
   return (
     <>
       <AppShellView {...appShellView} />
-      {shouldShowWorldSwitchVeil(controller.activeWorld) ? (
-        <WorldSwitchVeil
-          activeWorld={controller.activeWorld}
-          canReviveTheme={controller.canReviveTheme}
-          onToggleWorld={controller.topbarProps.actions.onToggleWorld}
-          onReviveLastSkin={controller.restoreLastThemeSkin}
-          onRestoreDefaultTheme={controller.restoreDefaultTheme}
-        />
-      ) : null}
       <ScreenshotDebugOverlay
         visible={appRuntime.screenshotDebugOverlay.visible}
         capturedAt={appRuntime.screenshotDebugOverlay.capturedAt}

@@ -1,41 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { CodeCardActionMode } from '../../../../app/chat/chatDerivedState';
-import { readMessageSpeechCacheBlob, saveMessageSpeechCache } from '../../../../app/chat/messageSpeechCache';
-import { requestGeneratedSpeech } from '../../../../engines/voiceGenerationClient';
+import { readMessageSpeechCacheBlob } from '../../../../app/chat/messageSpeechCache';
 import { writeTextToClipboard } from '../../../../infrastructure/clipboard';
-import { canUseNativeSystemBackupFiles, exportFileViaSystemFiles } from '../../../../native/systemBackupFiles';
-import { useRuntimeStore } from '../../../../stores/runtimeStore';
-import type { ChatMemoryEvidence, ChatMessageVoiceCache, ConversationTaskStatus } from '../../../../types/domain';
+import { exportBlobToFile } from '../../../../infrastructure/exportBlobFile';
+import type { ChatMemoryEvidence, ChatMessageVoiceCache, ChatObRecallEvidence, ConversationTaskStatus } from '../../../../types/domain';
 import { Icon } from '../../../Icon';
 import { runSelectionAction, runSuccessAction } from '../../../haptics';
 import { useI18n } from '../../../../i18n';
 import { MessageMemoryEvidence } from './MessageMemoryEvidence';
-
-async function exportSpeechBlob(blob: Blob, fileName: string) {
-  if (canUseNativeSystemBackupFiles()) {
-    return await exportFileViaSystemFiles(blob, fileName);
-  }
-
-  if (typeof File !== 'undefined' && typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-    const file = new File([blob], fileName, { type: blob.type || 'application/octet-stream' });
-    const shareData: ShareData = { files: [file], title: fileName };
-    if (typeof navigator.canShare !== 'function' || navigator.canShare(shareData)) {
-      await navigator.share(shareData);
-      return true;
-    }
-  }
-
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = fileName;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  return true;
-}
 
 export type MessageTaskReceiptAction = {
   status: ConversationTaskStatus;
@@ -49,23 +22,20 @@ type MessageActionsProps = {
   canForkAssistant: boolean;
   canRetryAssistant: boolean;
   retryAssistantLabel?: string;
-  canOpenThinkingSummary: boolean;
   memoryEvidence?: ChatMemoryEvidence | null;
+  /** 这一轮 OB 召回了什么；没开 OB 就是 null，什么都不显示。 */
+  obRecall?: ChatObRecallEvidence | null;
   taskReceiptAction?: MessageTaskReceiptAction | null;
   codeCardActionLabel: string;
   codeCardActionMode: CodeCardActionMode;
   codeCardProgressLabel: string | null;
-  isThinkingActive: boolean;
   messageContent: string;
-  speechContent: string;
   speechCache?: ChatMessageVoiceCache | null;
   role: 'assistant' | 'user';
   onSetCommandStatus: (text: string, isError?: boolean) => void;
   onCodeCardAction: () => void;
   onEditAssistant: (content: string) => void;
-  onSpeechCacheReady: (voiceCache: ChatMessageVoiceCache) => void;
   onForkAssistant: () => void;
-  onOpenThinkingSummary: () => void;
   onRetryLatestAssistant: () => void;
 };
 
@@ -75,44 +45,30 @@ export function MessageActions({
   canForkAssistant,
   canRetryAssistant,
   retryAssistantLabel,
-  canOpenThinkingSummary,
   memoryEvidence = null,
+  obRecall = null,
   taskReceiptAction = null,
   codeCardActionLabel,
   codeCardActionMode,
   codeCardProgressLabel,
-  isThinkingActive,
   messageContent,
-  speechContent,
   speechCache = null,
   role,
   onSetCommandStatus,
   onCodeCardAction,
   onEditAssistant,
-  onSpeechCacheReady,
   onForkAssistant,
-  onOpenThinkingSummary,
   onRetryLatestAssistant
 }: MessageActionsProps) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
-  const [nativeSpeechAvailable, setNativeSpeechAvailable] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
-  const [speechLoading, setSpeechLoading] = useState(false);
   const [assistantSheetOpen, setAssistantSheetOpen] = useState(false);
-  const [assistantSheetMode, setAssistantSheetMode] = useState<'menu' | 'edit' | 'memory'>('menu');
+  const [assistantSheetMode, setAssistantSheetMode] = useState<'menu' | 'edit' | 'memory' | 'ob'>('menu');
   const [assistantDraft, setAssistantDraft] = useState(messageContent);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioUrlRef = useRef<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const voiceGeneration = useRuntimeStore((state) => state.voiceGeneration);
   const showCodeCardAction = codeCardActionMode !== 'hidden';
   const hasMemoryEvidence = role === 'assistant' && Boolean(memoryEvidence?.items.length);
   const hasSpeechCache = role === 'assistant' && Boolean(speechCache?.assetId);
   const hasAssistantMore = role === 'assistant' && (canEditAssistant || canForkAssistant || canRetryAssistant || hasMemoryEvidence || hasSpeechCache);
-  const speakableContent = speechContent.trim();
-  const canUseConfiguredSpeech = voiceGeneration.enabled && Boolean(voiceGeneration.baseUrl?.trim() && voiceGeneration.apiKey?.trim());
-  const canSpeakAssistant = role === 'assistant' && Boolean(speakableContent) && (hasSpeechCache || canUseConfiguredSpeech || nativeSpeechAvailable);
   const resolvedRetryAssistantLabel = retryAssistantLabel ?? t('chat.messageActions.retry');
 
   useEffect(() => {
@@ -134,15 +90,7 @@ export function MessageActions({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [assistantSheetOpen]);
 
-  useEffect(() => {
-    setNativeSpeechAvailable(typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window);
-  }, []);
-
-  useEffect(() => () => {
-    stopSpeechPlayback();
-  }, []);
-
-  if (!canCopyAssistant && !canSpeakAssistant && !hasAssistantMore && !showCodeCardAction && !canOpenThinkingSummary && !taskReceiptAction) {
+  if (!canCopyAssistant && !hasAssistantMore && !showCodeCardAction && !taskReceiptAction) {
     return null;
   }
 
@@ -153,142 +101,15 @@ export function MessageActions({
     window.setTimeout(() => setCopied(false), 1400);
   };
 
-  function stopSpeechPlayback() {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    const currentAudio = audioRef.current;
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.src = '';
-      audioRef.current = null;
-    }
-    const currentUrl = audioUrlRef.current;
-    if (currentUrl) {
-      URL.revokeObjectURL(currentUrl);
-      audioUrlRef.current = null;
-    }
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setSpeaking(false);
-    setSpeechLoading(false);
-  }
-
-  const playNativeSpeech = (text: string) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-    setSpeaking(true);
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const playConfiguredSpeech = async (text: string) => {
-    if (!voiceGeneration.baseUrl?.trim() || !voiceGeneration.apiKey?.trim()) {
-      onSetCommandStatus(t('chat.messageActions.chooseVoiceProvider'), true);
-      return;
-    }
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setSpeechLoading(true);
-    try {
-      const result = await requestGeneratedSpeech({
-        settings: voiceGeneration,
-        text,
-        signal: controller.signal
-      });
-      if (controller.signal.aborted) return;
-      try {
-        const voiceCache = await saveMessageSpeechCache({
-          text,
-          settings: voiceGeneration,
-          result
-        });
-        if (!controller.signal.aborted) {
-          onSpeechCacheReady(voiceCache);
-        }
-      } catch {
-        onSetCommandStatus(t('chat.messageActions.speechCacheSaveFailed'), true);
-      }
-      if (!controller.signal.aborted) {
-        await playAudioBlob(result.blob);
-      }
-    } catch (error) {
-      if (controller.signal.aborted) return;
-      const message = error instanceof Error ? error.message : t('chat.messageActions.speechGenerationFailed');
-      onSetCommandStatus(message, true);
-      stopSpeechPlayback();
-    } finally {
-      if (abortRef.current === controller) {
-        abortRef.current = null;
-      }
-      setSpeechLoading(false);
-    }
-  };
-
-  const playAudioBlob = async (blob: Blob) => {
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audioRef.current = audio;
-    audioUrlRef.current = url;
-    audio.onended = () => {
-      if (audioRef.current !== audio) return;
-      stopSpeechPlayback();
-    };
-    audio.onerror = () => {
-      if (audioRef.current !== audio) return;
-      onSetCommandStatus(t('chat.messageActions.audioPlaybackFailed'), true);
-      stopSpeechPlayback();
-    };
-    setSpeaking(true);
-    await audio.play();
-  };
-
-  const playCachedSpeech = async (cache: ChatMessageVoiceCache) => {
-    setSpeechLoading(true);
-    try {
-      const blob = await readMessageSpeechCacheBlob(cache);
-      await playAudioBlob(blob);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : t('chat.messageActions.speechCacheMissing');
-      onSetCommandStatus(message, true);
-      stopSpeechPlayback();
-    } finally {
-      setSpeechLoading(false);
-    }
-  };
-
   const downloadCachedSpeech = async (cache: ChatMessageVoiceCache) => {
     try {
       const blob = await readMessageSpeechCacheBlob(cache);
-      const exported = await exportSpeechBlob(blob, cache.name || 'Polaris-voice.mp3');
+      const exported = await exportBlobToFile(blob, cache.name || 'Polaris-voice.mp3');
       if (exported) onSetCommandStatus(t('chat.messageActions.speechCacheExported'));
     } catch (error) {
       const message = error instanceof Error ? error.message : t('chat.messageActions.speechCacheMissing');
       onSetCommandStatus(message, true);
     }
-  };
-
-  const toggleSpeech = () => {
-    if (!canSpeakAssistant || speechLoading) return;
-    const text = speakableContent;
-    if (!text) return;
-    if (speaking) {
-      stopSpeechPlayback();
-      return;
-    }
-    stopSpeechPlayback();
-    if (speechCache?.assetId) {
-      void playCachedSpeech(speechCache);
-      return;
-    }
-    if (voiceGeneration.enabled) {
-      void playConfiguredSpeech(text);
-      return;
-    }
-    playNativeSpeech(text);
   };
 
   const closeAssistantSheet = () => {
@@ -407,6 +228,40 @@ export function MessageActions({
               showTrigger={false}
             />
           </div>
+        ) : assistantSheetMode === 'ob' && obRecall ? (
+          <div className="assistant-message-memory">
+            <div className="assistant-message-memory-title">
+              <button
+                type="button"
+                className="assistant-message-memory-back"
+                onClick={() => setAssistantSheetMode('menu')}
+                aria-label={t('chat.messageActions.backToActions')}
+              >
+                <Icon name="chevron" size={16} />
+              </button>
+              <span>{t('chat.obRecall.title')}</span>
+            </div>
+            {/* 失败和"搜到了 0 条"是两件事，只能显示一个，否则自相矛盾。 */}
+            {obRecall.status === 'failed' ? (
+              <p className="ob-recall-note">
+                {t('chat.obRecall.failedReason', { reason: obRecall.error ?? t('chat.obRecall.failed') })}
+              </p>
+            ) : obRecall.items.length === 0 ? (
+              <p className="ob-recall-note">{t('chat.obRecall.empty')}</p>
+            ) : (
+              <ul className="ob-recall-list">
+                {obRecall.items.map((item) => (
+                  <li key={item.id} className="ob-recall-item">
+                    <span className="ob-recall-name">
+                      {item.name}
+                      <span className="ob-recall-score">{item.score.toFixed(2)}</span>
+                    </span>
+                    <span className="ob-recall-excerpt">{item.excerpt}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         ) : (
           <div className="assistant-message-edit">
             <div className="assistant-message-edit-title">{t('chat.messageActions.editAssistant')}</div>
@@ -430,25 +285,32 @@ export function MessageActions({
 
   return (
     <div className={`message-inline-actions ${role}`}>
+      {obRecall ? (
+        <button
+          type="button"
+          className={`ob-recall-chip${obRecall.status === 'failed' ? ' is-failed' : ''}${assistantSheetMode === 'ob' && assistantSheetOpen ? ' active' : ''}`}
+          onClick={(event) => {
+            runSelectionAction(() => {
+              setAssistantSheetOpen(true);
+              setAssistantSheetMode('ob');
+            }, { element: event.currentTarget });
+          }}
+          aria-label={t('chat.obRecall.open')}
+          title={t('chat.obRecall.open')}
+        >
+          <Icon name={obRecall.status === 'failed' ? 'zap' : 'orbit'} size={13} />
+          <span>
+            {obRecall.status === 'failed'
+              ? t('chat.obRecall.failed')
+              : t('chat.obRecall.badge', { count: obRecall.count })}
+          </span>
+        </button>
+      ) : null}
       {canCopyAssistant && (
         <button type="button" className={`micro-action-btn ${copied ? 'active' : ''}`} onClick={() => { void copyMessage(); }} aria-label={copied ? t('chat.messageActions.copied') : t('chat.messageActions.copyAssistant')} title={copied ? t('chat.messageActions.copied') : t('chat.messageActions.copyAssistant')}>
           <Icon name="copy" size={14} />
         </button>
       )}
-      {canSpeakAssistant ? (
-        <button
-          type="button"
-          className={`micro-action-btn ${speaking ? 'active' : ''}`}
-          onClick={(event) => {
-            runSelectionAction(toggleSpeech, { element: event.currentTarget });
-          }}
-          aria-label={speechLoading ? t('chat.messageActions.generatingSpeech') : speaking ? t('chat.messageActions.stopReading') : t('chat.messageActions.readAssistant')}
-          title={speechLoading ? t('chat.messageActions.generatingSpeech') : speaking ? t('chat.messageActions.stopReading') : t('chat.messageActions.read')}
-          aria-pressed={speaking || speechLoading}
-        >
-          <Icon name={speaking || speechLoading ? 'pause' : 'voice'} size={14} />
-        </button>
-      ) : null}
       {taskReceiptAction ? (
         <button
           type="button"
@@ -463,19 +325,6 @@ export function MessageActions({
           <Icon name={taskReceiptAction.status === 'completed' ? 'check' : 'task'} size={14} />
         </button>
       ) : null}
-      {canOpenThinkingSummary && (
-        <button
-          type="button"
-          className={`micro-action-btn ${isThinkingActive ? 'active' : ''}`}
-          onClick={(event) => {
-            runSelectionAction(onOpenThinkingSummary, { element: event.currentTarget });
-          }}
-          aria-label={isThinkingActive ? t('chat.messageActions.openThinkingActive') : t('chat.messageActions.openThinking')}
-          title={isThinkingActive ? t('chat.messageActions.thinkingTitleActive') : t('chat.messageActions.thinkingTitle')}
-        >
-          <Icon name="polarisStar" size={14} color="polarisDeepSpace" />
-        </button>
-      )}
       {showCodeCardAction && (
         <>
           <button

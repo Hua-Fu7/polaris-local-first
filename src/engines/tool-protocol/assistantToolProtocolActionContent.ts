@@ -389,6 +389,26 @@ export function parseContentToolAction(
         targetLabel: normalizeOptionalString(action.targetLabel)
       } };
     }
+    case 'startVoiceCall': {
+      return { action: {
+        kind: 'startVoiceCall',
+        reason:
+          normalizeOptionalString(action.reason)
+          ?? normalizeOptionalString(action.message)
+          ?? normalizeOptionalString(action.note),
+        targetLabel: normalizeOptionalString(action.targetLabel)
+      } };
+    }
+    case 'hangUp': {
+      return { action: {
+        kind: 'hangUp',
+        reason:
+          normalizeOptionalString(action.reason)
+          ?? normalizeOptionalString(action.message)
+          ?? normalizeOptionalString(action.note),
+        targetLabel: normalizeOptionalString(action.targetLabel)
+      } };
+    }
     case 'webSearch': {
       const query =
         typeof action.query === 'string'
@@ -473,6 +493,47 @@ export function parseContentToolAction(
       return { action: {
         kind: 'deleteCalendarEvent',
         eventId,
+        targetLabel: normalizeOptionalString(action.targetLabel)
+      } };
+    }
+    case 'readCalendarNotes': {
+      return { action: {
+        kind: 'readCalendarNotes',
+        fromDate: normalizeOptionalString(action.fromDate) ?? normalizeOptionalString(action.from_date),
+        toDate: normalizeOptionalString(action.toDate) ?? normalizeOptionalString(action.to_date),
+        targetLabel: normalizeOptionalString(action.targetLabel)
+      } };
+    }
+    case 'writeCalendarNote': {
+      const date = normalizeOptionalString(action.date);
+      const text = normalizeOptionalString(action.text) ?? normalizeOptionalString(action.content);
+      if (!date) return { action: null, issue: '写日历便签缺少 date。' };
+      if (!text) return { action: null, issue: '写日历便签缺少 text。' };
+      return { action: {
+        kind: 'writeCalendarNote',
+        date,
+        text,
+        targetLabel: normalizeOptionalString(action.targetLabel)
+      } };
+    }
+    case 'updateCalendarNote': {
+      const noteId = normalizeOptionalString(action.noteId) ?? normalizeOptionalString(action.note_id) ?? normalizeOptionalString(action.id);
+      const text = normalizeOptionalString(action.text) ?? normalizeOptionalString(action.content);
+      if (!noteId) return { action: null, issue: '修改日历便签缺少 noteId。' };
+      if (!text) return { action: null, issue: '修改日历便签缺少 text。' };
+      return { action: {
+        kind: 'updateCalendarNote',
+        noteId,
+        text,
+        targetLabel: normalizeOptionalString(action.targetLabel)
+      } };
+    }
+    case 'deleteCalendarNote': {
+      const noteId = normalizeOptionalString(action.noteId) ?? normalizeOptionalString(action.note_id) ?? normalizeOptionalString(action.id);
+      if (!noteId) return { action: null, issue: '删除日历便签缺少 noteId。' };
+      return { action: {
+        kind: 'deleteCalendarNote',
+        noteId,
         targetLabel: normalizeOptionalString(action.targetLabel)
       } };
     }

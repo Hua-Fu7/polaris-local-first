@@ -1,5 +1,5 @@
 export const desktop = {
-  'desktop.navLabel': 'Polaris 桌面导航',
+  'desktop.navLabel': 'Solune 桌面导航',
   'desktop.expandSidebar': '展开桌面边栏',
   'desktop.collapseSidebar': '收起桌面边栏',
   'desktop.expandSidebarTitle': '展开边栏',

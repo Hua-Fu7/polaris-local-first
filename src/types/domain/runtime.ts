@@ -30,11 +30,21 @@ export interface AppDisplayPreferences {
 
 export interface AppCustomization {
   showChatAvatars: boolean;
+  /** 每条消息底下的小时钟（HH:mm）。缺省视为开。 */
+  showMessageClock?: boolean;
+  /** 消息头部的协作者名字。缺省视为开。 */
+  showCollaboratorName?: boolean;
+  /** 消息头部的模型名胶囊。缺省视为开。 */
+  showModelName?: boolean;
+  /** 消息头部的 token 用量胶囊。缺省视为开。 */
+  showTokenUsage?: boolean;
   starColor: string | null;
   starOpacity: number;
   starGlow: number;
   starScale: number;
   starWarmth: number;
+  /** Colour of the voice-call orb. Null falls back to the built-in grey. */
+  voiceCallOrbColor: string | null;
   backgroundAssetId: string | null;
   customFontAssetIds: string[];
   customFontScopeAssignments: Record<CustomFontScope, string | null>;

@@ -127,6 +127,8 @@ export type SpaceThemeActions = {
   deleteCollaboratorThemeSession: (collaboratorId: string) => void;
   commitSkinSnapshot: (label?: string) => void;
   restoreSkinSnapshot: (snapshotId: string) => void;
+  deleteSkinSnapshot: (snapshotId: string) => void;
+  clearSkinHistory: () => void;
   rollbackLastSkin: () => void;
 };
 
@@ -135,3 +137,4 @@ export type SpaceState =
   & SpaceThemeState
   & SpaceFrontstageActions
   & SpaceThemeActions;
+

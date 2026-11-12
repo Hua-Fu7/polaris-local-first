@@ -1,0 +1,206 @@
+/* 首页：一片 ASCII 海的背景 + 在一起多少天 + 今天的两条消息。
+   参考「what's on your mind」那种留白：整块内容垂直居中，没有卡片。 */
+
+.home-world {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.home-ocean {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  font-family: "OceanHanzi", ui-monospace, Menlo, Consolas, monospace;
+  pointer-events: none;
+  transition: filter 0.55s ease, opacity 0.55s ease;
+}
+
+/* 浅色主题：引擎画的是深色海，反相成「纸上的墨」，跟 character-ocean 的做法一致 */
+.home-ocean[data-ocean-invert='true'] {
+  filter: invert(1) hue-rotate(180deg) saturate(0.48);
+  opacity: 0.78;
+}
+
+.home-scroll {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 22px 150px;
+  text-align: center;
+}
+
+.home-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: min(100%, 460px);
+}
+
+.home-hero-label {
+  font-size: 12.5px;
+  letter-spacing: 4px;
+  color: var(--text-muted);
+}
+
+.home-hero-days {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.home-hero-days-value {
+  font-family: Georgia, "Songti SC", serif;
+  font-size: clamp(64px, 22vw, 96px);
+  line-height: 1;
+  color: var(--text);
+}
+
+.home-hero-days-unit {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.home-hero-date-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.home-hero-since {
+  margin-top: 6px;
+  font-size: 11.5px;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+}
+
+.home-summary-line {
+  margin-top: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.home-summary-stamp {
+  color: color-mix(in srgb, var(--text-muted) 82%, transparent);
+}
+
+.home-summary-sep {
+  color: color-mix(in srgb, var(--text-muted) 60%, transparent);
+}
+
+.home-summary-link {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: var(--text-soft);
+  cursor: pointer;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 34%, transparent);
+  transition: color 140ms ease, border-color 140ms ease;
+}
+
+.home-summary-link:active {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--text) 60%, transparent);
+}
+
+/* 首页打开时：画布铺满整个视口，body 与外壳的底色让开，
+   按钮（搜索/加号/输入框那些）照旧浮在上面。 */
+.home-ocean--portal {
+  position: fixed;
+  inset: 0;
+  /* 画布是 portal 到 body 上的，DOM 顺序在 #root 之后；
+     不抬 #root 的话这块半透明的海会盖在文字和桌宠上面（看着像全屏变淡）。 */
+  z-index: 0;
+}
+
+body[data-home-ocean='on'] #root {
+  position: relative;
+  z-index: 1;
+}
+
+body[data-home-ocean='on'],
+body[data-home-ocean='on'] #root,
+body[data-home-ocean='on'] .app-shell,
+body[data-home-ocean='on'] .world-frame,
+body[data-home-ocean='on'] .chat-world,
+body[data-home-ocean='on'] .chat-body,
+body[data-home-ocean='on'] .chat-dock {
+  background: transparent;
+}
+
+body[data-home-ocean='on'] .home-world {
+  background: transparent;
+}
+
+
+
+/* 热力图 / 日历这种从首页点开的正经页面：海先收起来 */
+body:not([data-home-ocean='on']) .home-ocean--portal {
+  display: none;
+}
+
+/* 字压在点阵上会看不清：中间垫一圈很淡的白，再给字一点白描边。
+   参考图那种「柔光」也是这个思路。 */
+.home-center {
+  position: relative;
+  padding: 26px 18px;
+}
+
+.home-center::before {
+  content: "";
+  position: absolute;
+  inset: -30px -10px;
+  z-index: -1;
+  border-radius: 44px;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--bg) 78%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 42%, transparent) 62%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.home-hero-label,
+.home-hero-since {
+  color: color-mix(in srgb, var(--text) 58%, transparent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--bg) 85%, transparent);
+}
+
+.home-summary-line {
+  color: color-mix(in srgb, var(--text) 62%, transparent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--bg) 85%, transparent);
+}
+
+.home-summary-stamp {
+  color: color-mix(in srgb, var(--text) 52%, transparent);
+}
+
+.home-summary-link {
+  color: color-mix(in srgb, var(--text) 78%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--text) 28%, transparent);
+}

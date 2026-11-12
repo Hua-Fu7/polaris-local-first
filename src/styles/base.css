@@ -2,6 +2,7 @@
 @import './help-hint.css';
 @import './app-error-boundary.css';
 @import './shell.css';
+@import './chaotic-orbit-loader.css';
 @import './shell-theme-transition.css';
 @import './collection.css';
 @import './collection-cards.css';
@@ -12,6 +13,10 @@
 @import './collection-empty.css';
 @import './collection-polish.css';
 @import './collection-collaborator-strip.css';
+@import './collaborator-scope-drawer-overhaul.css';
+@import './xinchao.css';
+@import './calendar.css';
+@import './heatmap.css';
 @import './collaborator-sigil.css';
 @import './collection-layout-fixes.css';
 @import './collection-card-interactions.css';
@@ -21,6 +26,11 @@
 @import './collection-workshop-panels.css';
 @import './collection-room-tags.css';
 @import './chat-world.css';
+@import './home.css';
+@import './artifacts.css';
+@import './ocean-hanzi.css';
+@import './clawd-pet.css';
+@import './voice-call.css';
 @import './chat-messages.css';
 @import './thinking-summary.css';
 @import './chat-composer.css';

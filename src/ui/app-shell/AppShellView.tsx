@@ -1,5 +1,8 @@
 import { Suspense } from 'react';
+import { useEffect } from 'react';
+import { useSpaceStore } from '../../stores/spaceStore';
 import { AppShellOverlays } from '../AppShellOverlays';
+import { ChaoticOrbitLoader } from '../shell/ChaoticOrbitLoader';
 import { AppReplyNotificationStack } from './AppReplyNotificationStack';
 import { DesktopAppShellFrame } from './DesktopAppShellFrame';
 import { MobileAppShellFrame } from './MobileAppShellFrame';
@@ -11,6 +14,7 @@ type AppShellViewProps = ReturnType<typeof useAppShellViewController>;
 
 export function AppShellView({
   activeWorld,
+  onReturnToChat,
   shellWorld,
   activeChatDensity,
   customization,
@@ -30,6 +34,7 @@ export function AppShellView({
   collectionOpenSettings,
   collectionOpenDesktopLocalSettings,
   collectionDeleteCollaborator,
+  collectionDrawerNavigate,
   collaboratorTransitionKey,
   topbarProps,
   chatWorldProps,
@@ -86,6 +91,7 @@ export function AppShellView({
                 onCreateCustomCollaborator={collectionCreateCustomCollaborator}
                 onOpenProviderSettings={collectionOpenProviderSettings}
                 onOpenDesktopLocalSettings={collectionOpenDesktopLocalSettings}
+                onCollectionDrawerNavigate={collectionDrawerNavigate}
               />
             </Suspense>
           </WorldFrameBoundary>
@@ -120,6 +126,43 @@ export function AppShellView({
     </section>
   );
 
+  // 启动时清掉"上次打开的工作区"：按系统返回是直接退出 App，
+  // 如果把这个 id 持久化下来，下次打开又会落回工作区页（用户抱怨的就是这个）。
+  useEffect(() => {
+    const state = useSpaceStore.getState();
+    if (state.collectionProjectId) state.setCollectionProjectId(null);
+  }, []);
+
+  const handleEdgeOpenDrawer = () => {
+    if (!topbarProps.state.collaboratorSwitchOpen) {
+      topbarProps.actions.onToggleCollaboratorSwitch();
+    }
+  };
+
+  const handleEdgeBack = () => {
+    if (overlaysProps.menu.open) {
+      overlaysProps.menu.onClose();
+      return true;
+    }
+    if (collectionInfoFullscreenOpen) {
+      setCollectionInfoFullscreenOpen(false);
+      return true;
+    }
+    if (collectionDetailOpen) {
+      setCollectionDetailOpen(false);
+      return true;
+    }
+    if (collectionScopeDrawerOpen) {
+      setCollectionCollaboratorSwitchOpen(false);
+      return true;
+    }
+    if (activeWorld !== 'chat') {
+      onReturnToChat();
+      return true;
+    }
+    return false;
+  };
+
   return (
     <main
       className={`app-shell app-layout-${appLayoutSurface} ${hasWideLayout ? 'app-layout-wide' : 'app-layout-compact'} ${showDesktopSidebar ? 'has-desktop-sidebar' : ''} ${showDesktopSidebar && effectiveDesktopSidebarCollapsed ? 'desktop-sidebar-collapsed' : ''} ${activeWorld} world-chroma-${shellWorld} chat-render-${activeChatDensity} ${isWorldSwitching ? 'world-switching' : ''} ${isCollaboratorTransitionActive ? 'collaborator-transition-active' : ''} ${collectionScopeDrawerOpen ? 'collaborator-scope-drawer-active' : ''} ${themeTransitionPhase ? `theme-transition-${themeTransitionPhase}` : ''}`}
@@ -148,7 +191,11 @@ export function AppShellView({
       <div className="bg-glow bg-glow-bottom" />
       <div className="theme-transition-veil" aria-hidden="true" />
       <div className="collaborator-transition-veil" aria-hidden="true" />
-      {!startupThemeReady ? <div className="startup-theme-veil" aria-hidden="true" /> : null}
+      {!startupThemeReady ? (
+        <div className="startup-theme-veil" aria-hidden="true">
+          <ChaoticOrbitLoader size={38} />
+        </div>
+      ) : null}
       {showDesktopSidebar ? (
         <DesktopAppShellFrame
           desktopSidebarProps={{
@@ -160,7 +207,11 @@ export function AppShellView({
           {worldStack}
         </DesktopAppShellFrame>
       ) : (
-        <MobileAppShellFrame topbarProps={topbarProps}>
+        <MobileAppShellFrame
+          topbarProps={topbarProps}
+          onEdgeOpenDrawer={handleEdgeOpenDrawer}
+          onEdgeBack={handleEdgeBack}
+        >
           {worldStack}
         </MobileAppShellFrame>
       )}
@@ -175,3 +226,4 @@ export function AppShellView({
     </main>
   );
 }
+

@@ -14,6 +14,7 @@ export const POLARIS_TOOL_PROMPT_GROUP_ORDER: PolarisToolPromptGroup[] = [
   'desktop',
   'theme',
   'attachment',
+  'voice',
   'generation',
   'archive',
   'web',
@@ -22,7 +23,8 @@ export const POLARIS_TOOL_PROMPT_GROUP_ORDER: PolarisToolPromptGroup[] = [
   'memory',
   'memoryRecall',
   'memoryWrite',
-  'proactive'
+  'proactive',
+  'voiceCall'
 ];
 
 export const POLARIS_TOOLBOX_PROMPT_GROUP_ORDER: PolarisToolPromptGroup[] = [
@@ -33,6 +35,7 @@ export const POLARIS_TOOLBOX_PROMPT_GROUP_ORDER: PolarisToolPromptGroup[] = [
   'desktop',
   'theme',
   'attachment',
+  'voice',
   'generation',
   'archive',
   'web',
@@ -41,7 +44,8 @@ export const POLARIS_TOOLBOX_PROMPT_GROUP_ORDER: PolarisToolPromptGroup[] = [
   'memory',
   'memoryRecall',
   'memoryWrite',
-  'proactive'
+  'proactive',
+  'voiceCall'
 ];
 
 export const DEFAULT_POLARIS_TOOL_PROMPT_PREFERENCES: Record<PolarisToolPromptGroup, boolean> = {
@@ -52,6 +56,7 @@ export const DEFAULT_POLARIS_TOOL_PROMPT_PREFERENCES: Record<PolarisToolPromptGr
   desktop: true,
   theme: true,
   attachment: false,
+  voice: true,
   generation: false,
   archive: false,
   web: false,
@@ -61,7 +66,8 @@ export const DEFAULT_POLARIS_TOOL_PROMPT_PREFERENCES: Record<PolarisToolPromptGr
   memory: true,
   memoryRecall: true,
   memoryWrite: false,
-  proactive: false
+  proactive: false,
+  voiceCall: true
 };
 
 export const POLARIS_TOOL_PROMPT_GROUP_LABELS: Record<PolarisToolPromptGroup, string> = {
@@ -72,6 +78,7 @@ export const POLARIS_TOOL_PROMPT_GROUP_LABELS: Record<PolarisToolPromptGroup, st
   desktop: '本机',
   theme: '换肤',
   attachment: '附件',
+  voice: '语音',
   generation: '生成',
   archive: '压缩包',
   web: '联网',
@@ -81,7 +88,8 @@ export const POLARIS_TOOL_PROMPT_GROUP_LABELS: Record<PolarisToolPromptGroup, st
   memory: '长期资料',
   memoryRecall: '主动回忆',
   memoryWrite: '写入记忆',
-  proactive: '主动消息'
+  proactive: '主动消息',
+  voiceCall: '通话'
 };
 
 export const POLARIS_TOOL_PROMPT_GROUP_DESCRIPTIONS: Record<PolarisToolPromptGroup, string> = {
@@ -92,6 +100,7 @@ export const POLARIS_TOOL_PROMPT_GROUP_DESCRIPTIONS: Record<PolarisToolPromptGro
   desktop: '让官网 Mac 桌面版协作者使用你授权的本机文件夹和需要逐次确认的命令行。',
   theme: '让协作者能试穿、精修和回滚界面换肤。',
   attachment: '让协作者查看、读取和保存当前对话里的附件。',
+  voice: '让协作者想发语音条时先递一张确认卡片；你点「允许」之后才会花钱合成。',
   generation: '让协作者生成新的产物附件，比如二维码。',
   archive: '让协作者处理 zip 和压缩包里的条目。',
   web: '让协作者联网搜索或读网页。',
@@ -101,7 +110,8 @@ export const POLARIS_TOOL_PROMPT_GROUP_DESCRIPTIONS: Record<PolarisToolPromptGro
   memory: '让协作者读取当前协作者的长期资料全文。',
   memoryRecall: '让协作者在不确定你当前指代、但过往对话可能有帮助时，主动搜索旧摘要和原文锚点。',
   memoryWrite: '让协作者把稳定线索写进长期记忆。',
-  proactive: '让协作者在对话中为自己创建主动消息规则，之后按时间主动开口。'
+  proactive: '让协作者在对话中为自己创建主动消息规则，之后按时间主动开口。',
+  voiceCall: '让协作者能主动给你打电话；你在别的应用里时，它会以一条不响铃的通知告诉你。'
 };
 
 export function isPolarisToolPromptGroupEnabled(

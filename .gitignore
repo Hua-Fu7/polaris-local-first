@@ -59,4 +59,12 @@ public/tutorial.html
 # Editor leftovers
 *.swp
 
+# Build snapshots: the packaging flow renames `dist` to `dist_old_<stamp>` instead of
+# deleting it (host safe-delete guard blocks bulk deletes), so these pile up.
+dist_old_*/
+vite.config.ts.timestamp-*.mjs
+
 # Local working notes.
+
+# Scratch dir used by the build/test scripts (TEMP redirect).
+.tmp/

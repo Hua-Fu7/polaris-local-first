@@ -1,0 +1,188 @@
+/* 对话内搜索面板（顶栏放大镜打开）。只搜当前这条对话，点结果跳过去并高亮。 */
+.chat-search-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: blur(18px) saturate(1.05);
+  animation: chatSearchIn 180ms var(--ease-out) both;
+}
+
+@keyframes chatSearchIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.chat-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
+}
+
+.chat-search-back {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+/* Icon 的 chevron 默认指向右，返回箭头要指向左。 */
+.chat-search-back svg {
+  transform: rotate(180deg);
+}
+
+.chat-search-back:hover,
+.chat-search-back:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+
+.chat-search-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-muted) 68%, transparent);
+  color: var(--text-muted);
+}
+
+.chat-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.chat-search-input::placeholder {
+  color: color-mix(in srgb, var(--text-muted) 78%, transparent);
+}
+
+.chat-search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.chat-search-clear {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.chat-search-clear:hover {
+  color: var(--text-soft);
+}
+
+.chat-search-results {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px 24px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-search-hint {
+  margin: 22px 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.chat-search-count {
+  padding: 6px 6px 10px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.chat-search-result {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-search-result:hover,
+.chat-search-result:focus-visible {
+  background: color-mix(in srgb, var(--accent-soft) 42%, transparent);
+  outline: none;
+}
+
+.chat-search-result-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.chat-search-role {
+  font-weight: 600;
+}
+
+.chat-search-role.user {
+  color: color-mix(in srgb, var(--accent) 72%, var(--text-soft) 28%);
+}
+
+.chat-search-time {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-search-excerpt {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-soft);
+}
+
+.chat-search-excerpt mark {
+  padding: 0 2px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent-soft) 82%, transparent);
+  color: var(--accent);
+}

@@ -1,0 +1,691 @@
+/* ── Voice call mode ────────────────────────────────────────────── */
+
+/*
+ * The surface is portalled to .app-stage rather than rendered inside the chat
+ * dock. The dock is a ~60px tall positioned ancestor, which used to box the
+ * overlay in and push the orb and hang-up button off-screen.
+ *
+ * `fixed` rather than `absolute` so the surface still fills the screen even if
+ * .app-stage is mid-transition and therefore becomes the containing block.
+ */
+.voice-call-overlay {
+  /* The orb colour is a per-space appearance preference; grey until set. */
+  --voice-call-orb-color: #8f939a;
+  --voice-call-beat: 2.4s;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  /* 最后那一段是软键盘实际遮住的高度（由 VoiceCallOverlay 量出来），没有键盘
+     时它是 0px，等于这一行没写。 */
+  padding: calc(30px + env(safe-area-inset-top, 0px)) 22px calc(26px + env(safe-area-inset-bottom, 0px) + var(--voice-call-keyboard-inset, 0px));
+  background:
+    radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--accent-glow) 60%, transparent), transparent 48%),
+    color-mix(in srgb, var(--surface-deep) 95%, transparent);
+  backdrop-filter: blur(18px);
+  animation: voice-call-in 0.22s ease;
+}
+
+@keyframes voice-call-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/*
+ * Fills the space between the safe areas and centres the orb, so the orb and
+ * the words sit in the middle of the screen instead of hugging the top with a
+ * dead band above the hang-up button.
+ */
+.voice-call-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  gap: 12px;
+  width: 100%;
+  min-height: 0;
+}
+
+/* ── Orb ────────────────────────────────────────────────────────── */
+
+/*
+ * The orb is a soft blob rather than a disc with rings: the colour is deepest
+ * at the centre and fades to nothing at the rim, so the shape has no edge at
+ * all. A stroked circle draws a hard boundary and reads as a graphic instead
+ * of something radiating outwards.
+ *
+ * Everything below is pure radial-gradient — no `filter: blur()`. The gradient
+ * stops already carry the softness, and animating a blur filter would force the
+ * phone to re-rasterise four blurred layers every frame.
+ */
+.voice-call-orb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 240px;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-call-ripples {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Soft puffs, not rings: a new one reads as the blob exhaling. Same
+   `closest-side` rule as the core, so a puff dissolves instead of ending in a
+   circle once border-radius clips it. */
+.voice-call-ripples span {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle closest-side at 50% 50%,
+    color-mix(in srgb, var(--voice-call-orb-color) 30%, transparent) 0%,
+    color-mix(in srgb, var(--voice-call-orb-color) 14%, transparent) 46%,
+    color-mix(in srgb, var(--voice-call-orb-color) 4%, transparent) 74%,
+    color-mix(in srgb, var(--voice-call-orb-color) 0%, transparent) 100%
+  );
+  opacity: 0;
+  animation: voice-call-ripple var(--voice-call-beat) cubic-bezier(0.22, 0.62, 0.36, 1) infinite;
+}
+
+.voice-call-ripples span:nth-child(2) { animation-delay: calc(var(--voice-call-beat) / 3); }
+.voice-call-ripples span:nth-child(3) { animation-delay: calc(var(--voice-call-beat) / 3 * 2); }
+
+@keyframes voice-call-ripple {
+  0% { transform: scale(0.72); opacity: 0; }
+  24% { opacity: 0.8; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+/*
+ * The stops trace a gaussian falloff: opaque and darker at the core, then
+ * steadily lighter out to nothing, with no banding and no rim. Mixing towards
+ * `#000` at the centre keeps the core deep whichever swatch is picked — the
+ * same trick that makes the reference blob look lit from behind.
+ *
+ * `closest-side` is load-bearing. A circle defaults to `farthest-corner`, whose
+ * radius on a square is the half-diagonal — 141% of the half-width — so the
+ * gradient would still be ~14% opaque where `border-radius` clips the element
+ * and the blob would end in a hard disc edge.
+ */
+.voice-call-core {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle closest-side at 50% 50%,
+    color-mix(in srgb, var(--voice-call-orb-color) 72%, #000) 0%,
+    color-mix(in srgb, var(--voice-call-orb-color) 87%, #000) 10%,
+    var(--voice-call-orb-color) 22%,
+    color-mix(in srgb, var(--voice-call-orb-color) 68%, transparent) 34%,
+    color-mix(in srgb, var(--voice-call-orb-color) 48%, transparent) 46%,
+    color-mix(in srgb, var(--voice-call-orb-color) 29%, transparent) 58%,
+    color-mix(in srgb, var(--voice-call-orb-color) 15%, transparent) 70%,
+    color-mix(in srgb, var(--voice-call-orb-color) 6%, transparent) 82%,
+    color-mix(in srgb, var(--voice-call-orb-color) 2%, transparent) 92%,
+    color-mix(in srgb, var(--voice-call-orb-color) 0%, transparent) 100%
+  );
+  transform: scale(var(--voice-call-core-scale, 1));
+  transition: transform 0.14s ease-out, opacity 0.24s ease;
+}
+
+/* Listening: the blob swells with the mic, so it reads as "hearing you". */
+.voice-call-orb.phase-listening .voice-call-core {
+  --voice-call-core-scale: calc(1 + var(--voice-call-level, 0) * 0.22);
+}
+
+/* Speaking: it beats in and out, one swell per puff. */
+.voice-call-orb.phase-speaking {
+  --voice-call-beat: 1.05s;
+}
+
+.voice-call-orb.phase-speaking .voice-call-core {
+  animation: voice-call-pulse var(--voice-call-beat) ease-in-out infinite;
+}
+
+@keyframes voice-call-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.92; }
+  50% { transform: scale(1.16); opacity: 1; }
+}
+
+/* Thinking has no voice to follow yet: slow, dim, barely moving. */
+.voice-call-orb.phase-thinking,
+.voice-call-orb.phase-transcribing {
+  --voice-call-beat: 3.6s;
+}
+
+.voice-call-orb.phase-thinking .voice-call-core,
+.voice-call-orb.phase-transcribing .voice-call-core {
+  animation: voice-call-breathe 3.6s ease-in-out infinite;
+}
+
+@keyframes voice-call-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.06); opacity: 0.78; }
+}
+
+/*
+ * Ringing: a slower, rounder beat than speaking — the blob is out there waiting
+ * to be picked up, not talking. It has to look alive on its own, because at this
+ * point there is no microphone level and no reply to follow.
+ */
+.voice-call-orb.phase-ringing {
+  --voice-call-beat: 1.7s;
+}
+
+.voice-call-orb.phase-ringing .voice-call-core {
+  animation: voice-call-ring 1.7s ease-in-out infinite;
+}
+
+@keyframes voice-call-ring {
+  0%, 100% { transform: scale(0.96); opacity: 0.72; }
+  45% { transform: scale(1.07); opacity: 0.95; }
+}
+
+/*
+ * 对方打过来时的那一屏用的也是振铃节奏：电话在响这件事，两个方向看起来是同一件事。
+ * 相位名单独起一个（incoming），因为它对应的键位和文案完全不同。
+ */
+.voice-call-orb.phase-incoming {
+  --voice-call-beat: 1.7s;
+}
+
+.voice-call-orb.phase-incoming .voice-call-core {
+  animation: voice-call-ring 1.7s ease-in-out infinite;
+}
+
+/* Refused: the blob settles and dims rather than beating, so the screen reads
+   as finished before it closes itself. The refusal is a decision somebody
+   made, not a malfunction — hence no red here. */
+.voice-call-orb.phase-declined .voice-call-core {
+  opacity: 0.42;
+  transform: scale(0.94);
+}
+
+.voice-call-orb.phase-declined .voice-call-ripples span {
+  animation: none;
+}
+
+/*
+ * Error tints the blob red by overriding the colour variable, which the core
+ * gradient and the puffs both read. The preference lives on the overlay rather
+ * than on the orb precisely so a rule like this can outrank it — an inline
+ * value on .voice-call-orb itself would always win.
+ *
+ * "Unreachable" shares the treatment on purpose: the call never got through,
+ * which is a failure of the wire rather than an answer from the other side.
+ */
+.voice-call-orb.phase-error,
+.voice-call-orb.phase-unreachable {
+  --voice-call-orb-color: var(--danger, #d64545);
+}
+
+.voice-call-orb.phase-error .voice-call-ripples span,
+.voice-call-orb.phase-unreachable .voice-call-ripples span {
+  animation: none;
+}
+
+.voice-call-orb.phase-error .voice-call-core,
+.voice-call-orb.phase-unreachable .voice-call-core {
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-call-ripples span,
+  .voice-call-orb.phase-speaking .voice-call-core,
+  .voice-call-orb.phase-thinking .voice-call-core,
+  .voice-call-orb.phase-transcribing .voice-call-core,
+  .voice-call-orb.phase-ringing .voice-call-core,
+  .voice-call-orb.phase-incoming .voice-call-core {
+    animation: none;
+  }
+}
+
+/* ── What the assistant just said ───────────────────────────────── */
+
+/*
+ * Reads like the thinking projection: bordered muted card with a leading dot.
+ * Sits directly under the orb so the words are the thing you look at while the
+ * orb beats.
+ */
+.voice-call-said {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  align-items: flex-start;
+  gap: 8px;
+  width: min(100%, 460px);
+  max-height: 30vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 11px 12px 12px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--border) 22%, transparent);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent-soft) 18%, transparent), transparent 40%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 10%, transparent), color-mix(in srgb, var(--surface) 5%, transparent));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: color-mix(in srgb, var(--text-muted) 90%, var(--text-soft) 10%);
+  animation: voice-call-in 0.18s ease;
+}
+
+.voice-call-said-dot {
+  width: 6px;
+  height: 6px;
+  margin-top: 0.55em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--voice-call-orb-color) 62%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-soft) 12%, transparent);
+}
+
+.voice-call-said p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.62;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: color-mix(in srgb, var(--text-muted) 92%, var(--text-soft) 8%);
+}
+
+/* The overlay is portalled inside .app-shell, where foundation.css turns
+   selection off for every descendant. Re-enable it here so the transcript can
+   be long-pressed, copied and translated, same as the thinking chain. */
+.app-shell .voice-call-said,
+.app-shell .voice-call-said * {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* ── Status lines ───────────────────────────────────────────────── */
+
+.voice-call-phase {
+  margin: 4px 0 0;
+  /* 转写那一步没有文案（见 VoiceCallOverlay 里的说明），留个最小高度让那行字
+     消失时 orb 和键位不会跟着跳一下。 */
+  min-height: 1.45em;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: center;
+}
+
+.voice-call-hint {
+  margin: 0;
+  font-size: var(--type-caption);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.voice-call-heard {
+  margin: 2px 0 0;
+  max-width: min(100%, 420px);
+  font-size: var(--type-caption);
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--text-muted) 88%, transparent);
+  text-align: center;
+}
+
+.voice-call-heard span {
+  margin-right: 6px;
+  color: color-mix(in srgb, var(--text-muted) 62%, transparent);
+}
+
+.voice-call-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--type-caption);
+  color: var(--text);
+  background: color-mix(in srgb, var(--danger, #d64545) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger, #d64545) 34%, transparent);
+  text-align: center;
+}
+
+/* Muted is a state, not a mistake, so it reads as a neutral chip. */
+.voice-call-muted {
+  margin: 0;
+  padding: 5px 13px;
+  border-radius: 999px;
+  font-size: var(--type-caption);
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 11%, transparent);
+  text-align: center;
+}
+
+.voice-call-setup {
+  margin: 0;
+  max-width: 300px;
+  font-size: var(--type-caption);
+  line-height: 1.6;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── 打字发言 ───────────────────────────────────────────────────── */
+
+/*
+ * 输入条和键位是一块：软键盘弹上来时两者一起被顶上去，中间只隔固定的间距，
+ * 所以拿一个 flex 容器兜住，而不是让 overlay 自己管两张互不相干的横排。
+ */
+.voice-call-dock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.voice-call-composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 420px);
+  padding: 6px 6px 6px 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border-hover) 38%, transparent);
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: voice-call-in 0.18s ease;
+}
+
+.voice-call-composer-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 0;
+  border: none;
+  background: none;
+  outline: none;
+  font: inherit;
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.voice-call-composer-input::placeholder {
+  color: color-mix(in srgb, var(--text-muted) 82%, transparent);
+}
+
+/* 和通话键一样做成实心圆：这一屏上凡是能按的东西都是这个形状。 */
+.voice-call-composer-send {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  color: var(--surface-deep);
+  background: color-mix(in srgb, var(--text) 86%, transparent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 0.16s ease, opacity 0.2s ease;
+}
+
+.voice-call-composer-send:active {
+  transform: scale(0.93);
+}
+
+/* 空输入时它只是个摆设，压暗掉，别让人以为按了没反应。 */
+.voice-call-composer-send:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+/*
+ * 键盘打开时，stage 里只剩「它说」和「你说」那两行字（orb 已经退场），
+ * 让它们从顶部排下来，像聊天一样贴近输入条 —— 继续垂直居中会在中间留出
+ * 一大片空白，看起来像界面坏了。
+ *
+ * 这里也让它在自己太高时能滚：键盘吃掉大半屏之后，聊得长的一轮可能塞不下。
+ * `flex-start` 配上 `overflow: auto` 不会像居中那样把上边裁掉。
+ */
+.voice-call-overlay.keyboard-open .voice-call-stage {
+  justify-content: flex-start;
+  padding-top: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Call keys ──────────────────────────────────────────────────── */
+
+/*
+ * Mirrors a system dialer: round icon keys with captions, plus one red receiver
+ * that needs none. The row is centred with a fixed gap and the interrupt key is
+ * only mounted while the assistant talks — reserving a slot for it left a hole
+ * in the middle of the row for the whole call.
+ *
+ * 加了打字键之后，最宽的一种组合（小机正在说话时打断键也在，五个键）在 360dp
+ * 的手机上刚好卡住，所以间距和键面都比原先收了一档 —— 44px 往上都还够指头按。
+ */
+.voice-call-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.voice-call-key {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.voice-call-key-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border-hover) 42%, transparent);
+  background: color-mix(in srgb, var(--surface) 52%, transparent);
+  color: var(--text);
+  transition: transform 0.16s ease, color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.voice-call-key:active .voice-call-key-face {
+  transform: scale(0.93);
+}
+
+/*
+ * "On" is a filled key rather than a tinted one: on this monochrome theme a
+ * colour tint barely reads, while inverting the key is unmistakable. Mixing
+ * towards `--text` and painting the glyph in `--surface-deep` keeps the pair
+ * contrasting in both light and dark themes.
+ */
+.voice-call-key.on .voice-call-key-face {
+  color: var(--surface-deep);
+  background: color-mix(in srgb, var(--text) 86%, transparent);
+  border-color: transparent;
+}
+
+.voice-call-key-label {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+.voice-call-key.on .voice-call-key-label {
+  color: var(--text);
+}
+
+/* Lifted so its centre lines up with the smaller keys beside it. */
+.voice-call-end {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  margin-top: -3px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--danger, #d64545);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--danger, #d64545) 34%, transparent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 0.16s ease;
+}
+
+/* 再窄的屏（320–380dp）上把键位紧一档，五个键也必须留在一行里：
+   换行会让挂断键孤零零掉到第二排，那比键小一点难看得多。 */
+@media (max-width: 380px) {
+  .voice-call-actions {
+    gap: 12px;
+  }
+
+  .voice-call-key-face {
+    width: 44px;
+    height: 44px;
+  }
+
+  .voice-call-end {
+    width: 50px;
+    height: 50px;
+  }
+}
+
+.voice-call-end:active {
+  transform: scale(0.93);
+}
+
+/* ── 来电：接听 / 拒接 ──────────────────────────────────────────── */
+
+/*
+ * 两枚对称的圆键，跟系统来电界面一样：左边红（拒接），右边绿（接听），各自带标题。
+ * 绿的用 --success 的兜底值，因为这个主题变量表里并没有定义它 —— 写成字面量
+ * 是为了让接听键在任何主题下都还是「能接」的那个意思。
+ */
+.voice-call-actions-answer {
+  gap: 56px;
+  align-items: center;
+}
+
+.voice-call-answer-key {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.voice-call-answer-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  color: #fff;
+  transition: transform 0.16s ease;
+}
+
+.voice-call-answer-key:active .voice-call-answer-face {
+  transform: scale(0.93);
+}
+
+.voice-call-decline .voice-call-answer-face {
+  background: var(--danger, #d64545);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--danger, #d64545) 34%, transparent);
+}
+
+.voice-call-accept .voice-call-answer-face {
+  background: var(--success, #2f9e5c);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--success, #2f9e5c) 34%, transparent);
+}
+
+/* 两枚键都是实心亮色，所以标题得回到正文色，不能沿用挂断键那套弱化灰。 */
+.voice-call-answer-key .voice-call-key-label {
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* ── Settings: orb colour ───────────────────────────────────────── */
+
+/* The label sits above the swatches rather than beside them: six 34px dots
+   never fit the 46% column .menu-preference-row reserves. */
+.voice-call-orb-color-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.voice-call-orb-color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Each swatch previews the blob itself, not a flat paint chip, so what you
+   pick is what the call screen shows. */
+.voice-call-orb-color-swatch {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 26%, transparent);
+  background: radial-gradient(
+    circle closest-side at 50% 50%,
+    color-mix(in srgb, var(--swatch-color) 72%, #000) 0%,
+    var(--swatch-color) 26%,
+    color-mix(in srgb, var(--swatch-color) 52%, transparent) 56%,
+    color-mix(in srgb, var(--swatch-color) 18%, transparent) 80%,
+    color-mix(in srgb, var(--swatch-color) 0%, transparent) 100%
+  );
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 0.14s ease;
+}
+
+.voice-call-orb-color-swatch:active {
+  transform: scale(0.92);
+}
+
+.voice-call-orb-color-swatch.active {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--surface-deep) 92%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--text) 46%, transparent);
+}
+
+.voice-call-orb-color-reset {
+  margin-top: 12px;
+}
+

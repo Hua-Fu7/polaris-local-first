@@ -22,6 +22,17 @@ import {
   inspectImageAttachment
 } from '../../engines/imageAssetTools';
 import { generateImageAttachment } from '../../engines/generatedImageTool';
+import { resolveStickerTarget, stickerToChatAttachment } from '../../engines/stickers/stickerLibrary';
+import {
+  addCalendarNote as addCalendarNoteToStore,
+  deleteCalendarNote as deleteCalendarNoteFromStore,
+  listCalendarNotes,
+  updateCalendarNote as updateCalendarNoteInStore
+} from '../../engines/calendar/calendarNotes';
+import {
+  listCalendarUnreadChanges,
+  markCalendarUnreadChangesSeen
+} from '../../engines/calendar/calendarInbox';
 import type { ToolContext } from '../../engines/toolExecutorTypes';
 import {
   createAttachmentFromAsset,
@@ -46,6 +57,8 @@ import { buildDesktopToolExecutionContext } from './chatDesktopToolExecutionCont
 import { buildEnvironmentToolExecutionContext } from './chatEnvironmentToolExecutionContext';
 import { buildMcpToolExecutionContext } from './chatMcpToolExecutionContext';
 import { buildProactiveToolExecutionContext } from './chatProactiveToolExecutionContext';
+import { buildVoiceCallToolExecutionContext } from './chatVoiceCallToolExecutionContext';
+import { buildVoiceMessageToolExecutionContext } from './chatVoiceMessageToolExecutionContext';
 import type {
   ChatSpaceFrontstagePort,
   ChatSpaceThemeSessionPort,
@@ -231,6 +244,7 @@ export function buildDirectToolExecutionContext({
   const getLatestRuntimeSearchConfig = () => runtime.readLatestState?.().search ?? runtime.search;
   const getConversationMessages = () => chat.getConversationMessages(conversationId);
   const writeOwnerCollaboratorId = ownerCollaboratorId ?? undefined;
+  const ownerCollaboratorName = persona.personas.find((entry) => entry.id === ownerCollaboratorId)?.name ?? '小机';
   const latestCollectionState = getLatestCollectionState();
   const accessibleImageCards = filterImageCardsForCollaboratorScope(
     latestCollectionState.imageCards,
@@ -335,14 +349,57 @@ export function buildDirectToolExecutionContext({
       activeProjectId
     }),
     ...buildProactiveToolExecutionContext({ runtime, ownerCollaboratorId, conversationId }),
+    ...buildVoiceCallToolExecutionContext({ personas: persona.personas, ownerCollaboratorId, conversationId }),
+    ...buildVoiceMessageToolExecutionContext({ personas: persona.personas, ownerCollaboratorId, conversationId }),
     inspectAttachments: (scope, query) => inspectConversationAttachments(getConversationMessages(), scope, query),
     webSearch: (query, maxResults) => runWebSearch(query, maxResults, getLatestRuntimeSearchConfig()),
-    readWebPage: (url, maxChars) => readWebPageContent(url, maxChars),
+    readWebPage: (url, maxChars) => readWebPageContent(url, maxChars, getLatestRuntimeSearchConfig()),
     listCalendars: () => listNativeCalendars(),
     readCalendarEvents: (query) => readNativeCalendarEvents(query),
     createCalendarEvent: (draft) => createNativeCalendarEvent(draft),
     updateCalendarEvent: (patch) => updateNativeCalendarEvent(patch),
     deleteCalendarEvent: (event) => deleteNativeCalendarEvent(event),
+    readCalendarNotes: (fromDate, toDate) => {
+      const collaboratorId = ownerCollaboratorId ?? 'default';
+      const notes = listCalendarNotes(collaboratorId, fromDate, toDate);
+      const unreadChanges = listCalendarUnreadChanges(collaboratorId);
+      markCalendarUnreadChangesSeen(collaboratorId);
+      return {
+        ok: true,
+        summary: `读取到 ${notes.length} 条 Polaris 日历便签，处理 ${unreadChanges.length} 条未读变化`,
+        detailText: notes.length ? '' : '这个时间段没有 Polaris 日历便签。',
+        notes,
+        unreadChanges
+      };
+    },
+    writeCalendarNote: (date, text) => {
+      const note = addCalendarNoteToStore({
+        collaboratorId: ownerCollaboratorId ?? 'default',
+        date,
+        author: 'collaborator',
+        authorName: ownerCollaboratorName,
+        text
+      });
+      return note
+        ? { ok: true, summary: `已写入 ${date} 的日历便签`, detailText: note.text, note }
+        : { ok: false, error: '便签内容不能为空。' };
+    },
+    updateCalendarNote: (noteId, text) => {
+      const note = updateCalendarNoteInStore({
+        collaboratorId: ownerCollaboratorId ?? 'default',
+        noteId,
+        text
+      });
+      return note
+        ? { ok: true, summary: `已修改 ${note.date} 的日历便签`, detailText: note.text, note }
+        : { ok: false, error: '没有找到这条日历便签，或内容为空。' };
+    },
+    deleteCalendarNote: (noteId) => {
+      const deleted = deleteCalendarNoteFromStore(ownerCollaboratorId ?? 'default', noteId);
+      return deleted
+        ? { ok: true, summary: '已删除日历便签', detailText: `noteId=${noteId}`, noteId }
+        : { ok: false, error: '没有找到这条日历便签。' };
+    },
     inspectArchiveEntries: (target, query) => inspectConversationArchiveEntries(getConversationMessages(), target, query),
     readAttachmentText: (target, maxChars) => readConversationAttachmentText(getConversationMessages(), target, maxChars),
     readArchiveEntryText: (target, entry, maxChars) =>
@@ -369,6 +426,17 @@ export function buildDirectToolExecutionContext({
         globalApi: runtime.api
       }),
     sendImageAttachment: async (target, title) => {
+      if (target?.trim().toLowerCase().startsWith('sticker:')) {
+        const sticker = resolveStickerTarget(target);
+        if (!sticker) {
+          return { ok: false, error: '没有找到这个自定义表情。请先在输入框旁的加号里打开表情包，添加图片或换一个名字。' };
+        }
+        return {
+          ok: true,
+          attachment: stickerToChatAttachment(sticker),
+          detailText: [`表情：${sticker.name}`, `stickerId=${sticker.id}`].join('\n')
+        };
+      }
       const imported = await importImageSourceForSend(target, title);
       if (imported) return imported;
       const resolved = await resolveImageMaterialTarget(target);

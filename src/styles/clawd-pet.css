@@ -1,0 +1,110 @@
+.clawd-pet {
+  position: absolute;
+  right: 20px;
+  top: -107px;
+  z-index: 4;
+  width: 120px;
+  height: 120px;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 110ms ease;
+}
+
+.clawd-pet__hit {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transform: translateX(-50%);
+}
+
+/* 装扮层：叠在精灵上方，位置由 clawdAccessories.ts 里的 width/top 决定 */
+.clawd-pet__accessory {
+  position: absolute;
+  left: 50%;
+  z-index: 3;
+  height: auto;
+  transform: translateX(-50%);
+  pointer-events: none;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18));
+}
+
+/* 换装弹窗：长按出现在桌宠旁边 */
+.clawd-pet__outfits {
+  position: absolute;
+  right: 6px;
+  bottom: 100%;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  width: 186px;
+  padding: 10px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-strong, #ffffff) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  pointer-events: auto;
+}
+
+.clawd-pet__outfit {
+  padding: 7px 4px;
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.clawd-pet__outfit.is-active {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.clawd-pet__hit:active {
+  transform: translateX(-50%) scale(0.92);
+}
+
+.clawd-pet__sprite {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.22));
+  transition: transform 110ms ease;
+}
+
+.clawd-pet__hit:active ~ .clawd-pet__sprite {
+  transform: scale(0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clawd-pet,
+  .clawd-pet__sprite {
+    animation: none;
+    transition: none;
+  }
+}

@@ -25,4 +25,6 @@ export type RequestAssistantReplyParams = {
   signal?: AbortSignal;
   onProgress?: (reply: AssistantReplyProgress) => void;
   onBuiltRequest?: (request: BuiltRequest) => void;
+  /** 判断层专用：把 `toolChoice: required` 穿透 capability 白名单，强制模型必须调用工具。 */
+  forceToolChoice?: boolean;
 };

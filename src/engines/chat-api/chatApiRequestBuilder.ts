@@ -11,6 +11,7 @@ export function buildApiRequest(params: {
   advanced?: PersonaAdvancedSettings;
   bodyOverrides?: Record<string, unknown>;
   openAiToolHistoryMode?: OpenAiToolHistoryMode;
+  forceToolChoice?: boolean;
 }): BuiltRequest {
   return buildProviderRuntimeRequest(params);
 }

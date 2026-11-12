@@ -80,11 +80,11 @@ describe('hasRenderableAssistantStreamingPayload', () => {
     )).toBe(false);
   });
 
-  it('treats visible thinking as renderable streaming payload', () => {
+  it('keeps visible thinking out of the bubble so the prelude keeps the stage', () => {
     expect(hasRenderableAssistantStreamingPayload(
       createAssistantMessage({ thinkingText: '先想一下。' }),
       true
-    )).toBe(true);
+    )).toBe(false);
   });
 });
 
@@ -113,13 +113,13 @@ describe('resolveAssistantStreamingChrome', () => {
     });
   });
 
-  it('renders visible thinking without the continuation hint', () => {
+  it('keeps the star prelude while only the thinking chain is streaming', () => {
     expect(resolveAssistantStreamingChrome({
       message: createAssistantMessage({ thinkingText: '先想一下。' }),
       lifecycle: 'streaming-live',
       showThinking: true
     })).toEqual({
-      showPrelude: false,
+      showPrelude: true,
       showHint: false,
       showLiveHint: false
     });
@@ -178,13 +178,13 @@ describe('resolveDisplayStreamingState', () => {
     })).toEqual({ messageId: 'assistant-3', phase: 'stage' });
   });
 
-  it('reconstructs visible thinking-only assistant messages as live', () => {
+  it('keeps thinking-only assistant messages in the stage until real prose arrives', () => {
     expect(resolveDisplayStreamingState({
       showThinking: true,
       sending: true,
       messages: [createAssistantMessage({ id: 'assistant-thinking', thinkingText: '先想一下。' })],
       streaming: null
-    })).toEqual({ messageId: 'assistant-thinking', phase: 'live' });
+    })).toEqual({ messageId: 'assistant-thinking', phase: 'stage' });
   });
 
   it('does not revive an older assistant reply when the latest non-tool message is a user turn', () => {

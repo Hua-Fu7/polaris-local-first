@@ -269,10 +269,29 @@ function normalizeRequestDebugEntryForMenu(entry: RequestDebugEntry): MenuSafeRe
   };
 }
 
+/**
+ * 老记录里 inputTokens 是「不含缓存」的（Anthropic 语义），当时又把未命中算成
+ * `input - cached` → 负数截成 0，命中率永远是 100%。原始响应没留，但特征还在：
+ * **缓存读比输入还多**。看到这个特征就地把总数补回去，历史数据因此也能重算。
+ */
+function normalizeLegacyCacheUsage(usage: ChatTokenUsage): ChatTokenUsage {
+  const input = usage.inputTokens;
+  const cached = usage.cachedInputTokens;
+  if (typeof input !== 'number' || typeof cached !== 'number' || cached <= input) return usage;
+  const creation = usage.cacheCreationInputTokens ?? 0;
+  return {
+    ...usage,
+    inputTokens: input + cached + creation,
+    cacheMissInputTokens: input,
+    // totalTokens 里本来就含这些，别再加，否则总 token 会虚高
+    totalTokens: Math.max(usage.totalTokens ?? 0, input + cached + creation)
+  };
+}
+
 function normalizeUsage(message: ChatMessage): ChatTokenUsage | null {
   const totalTokens = message.tokenUsage?.totalTokens ?? message.tokenCount;
   if (!totalTokens || totalTokens <= 0) return null;
-  return {
+  return normalizeLegacyCacheUsage({
     totalTokens,
     inputTokens: message.tokenUsage?.inputTokens,
     outputTokens: message.tokenUsage?.outputTokens,
@@ -280,7 +299,7 @@ function normalizeUsage(message: ChatMessage): ChatTokenUsage | null {
     cacheMissInputTokens: message.tokenUsage?.cacheMissInputTokens,
     cacheCreationInputTokens: message.tokenUsage?.cacheCreationInputTokens,
     reasoningTokens: message.tokenUsage?.reasoningTokens
-  };
+  });
 }
 
 function sumToken(value: number | undefined) {

@@ -1,17 +1,20 @@
 // Streamable HTTP transport for the MCP runtime.
 //
 // Owns the streamable-http session lifecycle (initialize → notifications/initialized
-// → requests → DELETE), the single-shot HTTP request including the native
-// CapacitorHttp bridge, and parsing one HTTP response (JSON or text/event-stream)
+// → requests → DELETE), the single-shot HTTP request including the native HTTP
+// bridge, and parsing one HTTP response (JSON or text/event-stream)
 // into a JSON-RPC message. No catalog, no cache, no persistent SSE connection —
 // that legacy transport lives separately.
 
-import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import {
   createRpcId,
   ensureSuccessMessage,
   findResponseMessage
 } from './mcpRuntimeJsonRpc';
+import {
+  canUseNativeProviderHttp,
+  executeNativeProviderHttpRequest
+} from '../native/providerHttp';
 import type {
   JsonRpcId,
   JsonRpcMessage,
@@ -34,27 +37,22 @@ export type StreamableSession = {
   sessionId?: string;
 };
 
-function shouldUseNativeMcpHttp(url: string, options: McpTransportOptions) {
-  if (options.fetchImpl) {
-    return false;
-  }
-  if (options.server.transport !== 'streamable-http') {
-    return false;
-  }
-  if (!Capacitor.isNativePlatform()) {
-    return false;
-  }
-  const platform = Capacitor.getPlatform();
-  if (platform !== 'ios' && platform !== 'android') {
-    return false;
-  }
-
-  try {
-    const protocol = new URL(url).protocol;
-    return protocol === 'http:' || protocol === 'https:';
-  } catch {
-    return false;
-  }
+/**
+ * MCP servers reached from the phone must go through the native HTTP bridge.
+ *
+ * A WebView `fetch` is subject to CORS, and plenty of MCP servers (galatea,
+ * lkcoffee, …) simply do not answer the `OPTIONS` preflight at all — they were
+ * written for server-to-server callers. Sending `Authorization` makes the
+ * request non-simple, which forces a preflight, which fails, which surfaces in
+ * the UI as a bare `Failed to fetch`. Routing through the native bridge skips
+ * CORS entirely, so any server the desktop build can reach also works on the
+ * phone, including ones added later.
+ *
+ * Desktop/web keeps using `fetch`: there is no bridge there, and the browser
+ * dev server has no CORS problem with the endpoints users configure.
+ */
+function shouldUseNativeMcpHttp(_url: string, _options: McpTransportOptions) {
+  return canUseNativeProviderHttp();
 }
 
 function serializeNativeHttpBody(value: unknown) {
@@ -70,11 +68,72 @@ function serializeNativeHttpBody(value: unknown) {
   return String(value);
 }
 
-function createResponseFromNativeHttp(result: Awaited<ReturnType<typeof CapacitorHttp.request>>) {
-  return new Response(serializeNativeHttpBody(result.data), {
-    status: result.status,
-    headers: result.headers
+/**
+ * Run one MCP request through the native bridge and turn it back into a
+ * `Response`, so the rest of the transport keeps working in terms of fetch.
+ *
+ * The bridge streams the reply as base64 chunks; MCP replies are small JSON or
+ * SSE documents, so buffering them all and building the body afterwards is both
+ * simpler and safe. Streaming is reserved for the model transport, which needs
+ * incremental delivery — the catalog and tool calls do not.
+ */
+async function requestViaNativeBridge(
+  url: string,
+  init: RequestInit
+) {
+  const requestHeaders = new Headers(init.headers ?? undefined);
+  const headerRecord: Record<string, string> = {};
+  requestHeaders.forEach((value, key) => {
+    headerRecord[key] = value;
   });
+
+  const rawBody = serializeNativeHttpBody(init.body);
+  const body = rawBody ?? undefined;
+
+  let status = 0;
+  let contentType = '';
+  let accumulated = '';
+
+  await executeNativeProviderHttpRequest({
+    url,
+    headers: headerRecord,
+    body: body ?? '',
+    signal: init.signal ?? undefined,
+    onResponse: (response) => {
+      status = response.status;
+      contentType = response.contentType || '';
+    },
+    onTextChunk: (chunk) => {
+      accumulated += chunk;
+    }
+  });
+
+  const responseHeaders = new Headers();
+  if (contentType) {
+    responseHeaders.set('content-type', contentType);
+  }
+  // MCP sessions are carried by this header; mirror it from the raw reply when
+  // the server sent one, so `initializeStreamableSession` can pick it up.
+  const sessionHeader = extractHeaderFromRawResponse(accumulated, 'mcp-session-id');
+  if (sessionHeader) {
+    responseHeaders.set('mcp-session-id', sessionHeader);
+  }
+
+  // A 202 (notification accepted) has no body, and turning an empty string into
+  // a `Response` body is fine — but a 204 must not carry one at all.
+  const bodyInit = status === 204 ? null : accumulated;
+  return new Response(bodyInit, { status, headers: responseHeaders });
+}
+
+/**
+ * The native bridge rebuilds the body but drops the headers, so `Mcp-Session-Id`
+ * would be lost. It arrives as the first line of whatever the server streamed
+ * back, so recover it from there. Returns null when absent.
+ */
+function extractHeaderFromRawResponse(raw: string, headerName: string) {
+  if (!raw) return null;
+  const match = raw.match(new RegExp(`"${headerName}"\\s*:\\s*"([^"]+)"`, 'i'));
+  return match ? match[1] : null;
 }
 
 async function requestMcpHttp(
@@ -87,19 +146,7 @@ async function requestMcpHttp(
     return await fetchImpl(url, init);
   }
 
-  const headers = new Headers(init.headers ?? undefined);
-  const body = init.body;
-  const nativeResponse = await CapacitorHttp.request({
-    url,
-    method: init.method ?? 'GET',
-    headers: Object.fromEntries(headers.entries()),
-    data: typeof body === 'string' ? body : body ? String(body) : undefined,
-    responseType: 'text',
-    connectTimeout: options.timeoutMs,
-    readTimeout: options.timeoutMs
-  });
-
-  return createResponseFromNativeHttp(nativeResponse);
+  return await requestViaNativeBridge(url, init);
 }
 
 function dispatchJsonRpcFromSseData(
@@ -227,13 +274,18 @@ export async function initializeStreamableSession(options: McpTransportOptions):
 export async function closeStreamableSession(options: McpTransportOptions & StreamableSession) {
   if (!options.sessionId) return;
   try {
-    await requestMcpHttp(options.endpoint, {
+    // Deliberately sent via plain `fetch`, not the native bridge: the bridge is
+    // POST-only, and this close is a best-effort teardown whose result nobody
+    // reads. A CORS failure here is harmless — the session expires on its own —
+    // and swallowing it keeps the try/catch below as the only failure path.
+    const fetchImpl = getFetchImpl(options.fetchImpl);
+    await fetchImpl(options.endpoint, {
       method: 'DELETE',
       headers: buildServerHeaders(options.server, {
         'MCP-Protocol-Version': options.protocolVersion,
         'Mcp-Session-Id': options.sessionId
       })
-    }, options);
+    });
   } catch {
     // ignore close failures
   }

@@ -33,8 +33,17 @@ import type { ChatUiState } from './context/ChatUiState';
 import { buildThemeToolModeSwitchFeedback } from '../../theme-tool-mode/themeToolModeGuidance';
 import { acceptPendingWorkspaceProposal, rejectPendingWorkspaceProposal } from './workspaceProposalActions';
 import { useChatStore } from '../../../stores/chatStore';
+import { useRuntimeStore } from '../../../stores/runtimeStore';
 import { createChatSlashCommandHandler } from '../../../app/chat/chatSlashCommands';
 import { setTaskModeEnabledForConversations } from '../../../app/chat/taskModeToggle';
+import {
+  createVoiceCallDeclinedWakeMessage,
+  createVoiceCallEndedWakeMessage,
+  createVoiceCallMissedWakeMessage
+} from '../../../app/chat/voiceCallEventMessage';
+import { approveVoiceMessage } from '../../../app/chat/voiceMessageApproval';
+import { closeHomeScreen } from '../../../app/home/homeScreenStore';
+import type { VoiceMessageRequest } from '../../../app/chat/voiceMessageRequestStore';
 import { useI18n, type I18nTranslator } from '../../../i18n';
 
 type UseChatProviderValueArgs = {
@@ -152,8 +161,28 @@ function buildActionsSection(args: {
   themeSession: ReturnType<typeof useThemeSessionActions>;
   t: Translate;
 }): ChatContextActionsValue {
+  // 唤醒协作者的公共路径：写一条 trigger-runtime 消息，再走 runReply 立即生成。
+  // 拒接、未接超时、挂断三种场景共用，只有消息文案不同。
+  const wakeAfterCall = (
+    conversationId: string,
+    collaboratorId: string,
+    wakeMessage: ChatMessage
+  ) => {
+    const writable = args.store.chat.getConversationWritable(conversationId);
+    if (writable) args.store.chat.addMessage(writable, wakeMessage);
+    return args.runReply({
+      conversationId,
+      collaboratorId,
+      messages: args.store.chat.getConversationMessages(conversationId)
+    });
+  };
+
   return {
-    submit: args.chatActions.handleSubmit,
+    submit: async () => {
+      // 从首页发出去的这句话就是进入聊天的那一刻。
+      closeHomeScreen();
+      await args.chatActions.handleSubmit();
+    },
     stopGeneration: () => {
       const activeConversationId = args.store.chat.activeConversationId;
       if (!activeConversationId) return;
@@ -161,6 +190,7 @@ function buildActionsSection(args: {
     },
     retry: args.chatActions.retryLatestAssistant,
     editMessage: args.ui.startEditingMessage,
+    deleteMessageTurn: args.chatActions.deleteMessageTurn,
     editAssistantMessage: args.chatActions.updateAssistantMessage,
     cacheAssistantSpeech: args.chatActions.cacheAssistantSpeech,
     forkFromMessage: args.chatActions.forkConversationFromMessage,
@@ -178,6 +208,11 @@ function buildActionsSection(args: {
     openThinkingSummary: (message: ChatMessage) => {
       args.ui.setCollapsedThinkingMessageIds((current) => current.includes(message.id) ? current : [...current, message.id]);
       args.ui.setThinkingSummaryMessageId(message.id);
+    },
+    // 就地展开：点一下开、再点一下收（不再弹底部卡片）。
+    toggleThinkingSummary: (message: ChatMessage) => {
+      args.ui.setCollapsedThinkingMessageIds((current) => current.includes(message.id) ? current : [...current, message.id]);
+      args.ui.setThinkingSummaryMessageId((current) => (current === message.id ? null : message.id));
     },
     toggleCodeExpanded: (messageId: string) =>
       args.ui.setExpandedCodeMessageIds((current) =>
@@ -279,6 +314,7 @@ function buildActionsSection(args: {
         args.store.space.clearPendingAttachments();
         args.store.space.clearPendingCardReference();
       }
+      closeHomeScreen();
       args.store.chat.setActiveConversation(conversationId);
     },
     acceptWorkspaceProposal: async () => {
@@ -365,7 +401,32 @@ function buildActionsSection(args: {
     },
     selectPersona: args.chatActions.selectPersona,
     deleteCollaborator: args.chatActions.deleteCollaborator,
-    closeThinkingSummary: () => args.ui.setThinkingSummaryMessageId(null)
+    closeThinkingSummary: () => args.ui.setThinkingSummaryMessageId(null),
+    allowVoiceMessage: async (request: VoiceMessageRequest) => {
+      // 只有这里会花钱：用户点了「允许」才合成，合成完把它作为一条语音消息落进会话。
+      const result = await approveVoiceMessage({
+        request,
+        settings: useRuntimeStore.getState().voiceGeneration,
+        deliver: async (message) => {
+          const writable = await args.store.chat.ensureConversationWritable(request.conversationId);
+          if (!writable) return false;
+          args.store.chat.addMessage(writable, message);
+          return true;
+        }
+      });
+      if (!result.ok) {
+        args.ui.setCommandStatus(result.error, true);
+      }
+    },
+    notifyCallDeclined: async (invite) => {
+      await wakeAfterCall(invite.conversationId, invite.collaboratorId, createVoiceCallDeclinedWakeMessage({ t: args.t }));
+    },
+    notifyCallMissed: async (invite) => {
+      await wakeAfterCall(invite.conversationId, invite.collaboratorId, createVoiceCallMissedWakeMessage({ t: args.t }));
+    },
+    notifyCallEnded: async (call) => {
+      await wakeAfterCall(call.conversationId, call.collaboratorId, createVoiceCallEndedWakeMessage({ t: args.t }));
+    }
   };
 }
 

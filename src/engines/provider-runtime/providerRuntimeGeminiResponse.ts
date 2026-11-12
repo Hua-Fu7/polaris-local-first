@@ -33,7 +33,11 @@ function appendGeminiCandidate(target: ReplyAccumulator, candidate: unknown) {
     if (!parsedPart) continue;
 
     if (typeof parsedPart.text === 'string') {
-      target.content += parsedPart.text;
+      if (parsedPart.thought === true) {
+        target.thinkingText += parsedPart.text;
+      } else {
+        target.content += parsedPart.text;
+      }
     }
 
     const functionCall = readObject(parsedPart.functionCall);
@@ -99,6 +103,6 @@ export function extractGeminiNativeReply(data: unknown, fallbackModel: string): 
   }
 
   return toAssistantReply(collected, fallbackModel, {
-    allowThinkingFallbackInContent: (collected.toolCalls?.length ?? 0) === 0
+    allowThinkingFallbackInContent: false
   });
 }

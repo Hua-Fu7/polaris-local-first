@@ -39,17 +39,35 @@ export function parseOpenAiCompatibleUsage(rawUsage: unknown): ChatTokenUsage | 
     ?? readNumber(usage.cache_creation_input_tokens)
     ?? readNumber(promptDetails?.cache_write_tokens)
     ?? readNumber(inputDetails?.cache_write_tokens);
+
+  /**
+   * Anthropic 风格的用量里 `input_tokens` **不含**已缓存的 token。
+   *
+   * 但中转层不一定老实：有的把 `input_tokens` 归一成总数（含缓存），有的原样透传。
+   * 判据用「缓存读比输入还多」——这种情况只可能出现在"输入不含缓存"的语义里。
+   * 命中这条就说明总数得补回去，否则 `输入 − 缓存读` 恒为负，命中率永远 100%。
+   */
+  const anthropicStyleUsage =
+    typeof inputTokens === 'number'
+    && typeof cachedInputTokens === 'number'
+    && cachedInputTokens > inputTokens;
+  const totalInputTokens = anthropicStyleUsage
+    ? inputTokens + cachedInputTokens + (cacheCreationInputTokens ?? 0)
+    : inputTokens;
+
   const cacheMissInputTokens =
-    explicitCacheMissInputTokens
-    ?? (
-      typeof inputTokens === 'number' && typeof cachedInputTokens === 'number'
-        ? Math.max(inputTokens - cachedInputTokens, 0)
-        : undefined
-    );
+    anthropicStyleUsage
+      ? inputTokens
+      : explicitCacheMissInputTokens
+        ?? (
+          typeof totalInputTokens === 'number' && typeof cachedInputTokens === 'number'
+            ? Math.max(totalInputTokens - cachedInputTokens, 0)
+            : undefined
+        );
 
   return compactTokenUsage({
     totalTokens: readNumber(usage.total_tokens),
-    inputTokens,
+    inputTokens: totalInputTokens,
     outputTokens: readNumber(usage.completion_tokens) ?? readNumber(usage.output_tokens),
     cachedInputTokens,
     cacheMissInputTokens,

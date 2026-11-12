@@ -12,6 +12,7 @@ export type AttachmentToolAction = Extract<
       | 'createQrCode'
       | 'generateImage'
       | 'sendImageAttachment'
+      | 'sendVoiceMessage'
       | 'inspectImageAsset'
       | 'extractImagePalette'
       | 'createImageVariant'
@@ -126,10 +127,14 @@ async function executeAttachmentToolAction(
       if (!result.ok) return result;
       return {
         ok: true,
-        summary: `已发送图片 · ${result.attachment.name}`,
+        summary: `${action.target?.trim().toLowerCase().startsWith('sticker:') ? '已发送表情' : '已发送图片'} · ${result.attachment.name}`,
         detailText: result.detailText,
         attachments: [result.attachment]
       };
+    }
+    case 'sendVoiceMessage': {
+      // 只把申请交给用户：合成要等她在聊天里点「允许」，这里一分额度都不花。
+      return await ctx.sendVoiceMessage(action.text);
     }
     case 'inspectImageAsset': {
       const result = await ctx.inspectImageAsset(action.target);

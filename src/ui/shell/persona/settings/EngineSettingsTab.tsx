@@ -80,7 +80,7 @@ export function EngineSettingsTab({ activePersona, onUpdatePersona }: PersonaTab
           hint={t('request.engine.contextLimitHint')}
           value={activePersona?.advanced.contextMessageLimit || ''}
           onChange={(v) => onUpdatePersona({ advanced: { contextMessageLimit: v } })}
-          min={1} max={200} step={1}
+          min={1} max={1000} step={1}
           unit={t('request.engine.contextLimitUnit')}
           emptyLabel={t('request.engine.noLimit')}
         />

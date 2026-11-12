@@ -32,6 +32,7 @@ import { hydrateFromDb, persistToDb, type RuntimePayload } from './runtimeStoreP
 import { DEFAULT_RUNTIME_TOOLBOX_STATE } from './runtimeStoreToolbox';
 import { DEFAULT_RUNTIME_TRIGGER_STATE } from './runtimeStoreTriggers';
 import { DEFAULT_VOICE_GENERATION_SETTINGS } from './runtimeStoreVoiceGeneration';
+import { DEFAULT_VOICE_TRANSCRIPTION_SETTINGS } from './runtimeStoreVoiceTranscription';
 import { DEFAULT_WEBDAV_CONFIG } from './runtimeStoreWebDav';
 
 function createMemoryPersistenceBackend(initialKv: PersistedDbEntry[] = []): PersistenceBackend {
@@ -111,6 +112,7 @@ function runtimePayload(overrides: Partial<RuntimePayload> = {}): RuntimePayload
     imageGeneration: DEFAULT_IMAGE_GENERATION_SETTINGS,
     imageUnderstanding: DEFAULT_IMAGE_UNDERSTANDING_SETTINGS,
     voiceGeneration: DEFAULT_VOICE_GENERATION_SETTINGS,
+    voiceTranscription: DEFAULT_VOICE_TRANSCRIPTION_SETTINGS,
     toolPromptPreferences: DEFAULT_RUNTIME_TOOLBOX_STATE.toolPromptPreferences,
     taskModeEnabled: DEFAULT_RUNTIME_TOOLBOX_STATE.taskModeEnabled,
     mcpServers: DEFAULT_RUNTIME_MCP_STATE.mcpServers,

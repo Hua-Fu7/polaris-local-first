@@ -10,6 +10,10 @@ import {
   normalizeProviderErrorMessage
 } from '../../engines/providerErrorHandling';
 import { requestCollaboratorReply } from '../../engines/request/requestPipeline';
+import { readObPassword } from '../../engines/ombreBrain/obSecret';
+import type { ObRecallResult } from '../../engines/ombreBrain/obRecall';
+import { buildChatObRecallEvidence } from './chatObRecallEvidence';
+import { useRuntimeStore } from '../../stores/runtimeStore';
 import type { AssistantReply } from '../../engines/chatApi';
 import type { AssistantRequestAudit } from '../../engines/request/requestAudit';
 import { resolveMcpToolCatalog } from '../../engines/mcpRuntime';
@@ -61,6 +65,10 @@ import {
   hasInterruptedWorkspaceDraftShape
 } from './chatReplyRecovery';
 import { createMessage } from '../../engines/chatMessageFactory';
+import {
+  listCalendarUnreadChanges,
+  markCalendarUnreadChangesSeen
+} from '../../engines/calendar/calendarInbox';
 import { getDesktopLocalHostBridge } from '../../desktop/localHost';
 import type { AssistantToolContext } from '../../engines/tool-protocol/assistantToolProtocolTypes';
 import {
@@ -286,6 +294,33 @@ async function requestReplyRound({
   await persistChatReplyBoundary(chat.persistToDb, 'before-request');
   recordChatSendPerformanceMark(conversationId, '聊天发送 · 用户消息已安全落盘');
   const activeRequestSnapshot = refreshRequestSnapshot?.() ?? requestSnapshot;
+  const unreadCalendarChanges = listCalendarUnreadChanges(collaboratorId);
+  const calendarNoticeText = unreadCalendarChanges.length
+    ? [
+        '[系统日历提醒]',
+        '用户有新写或修改的日历变化：',
+        ...unreadCalendarChanges.map((change) =>
+          `- ${change.date} · ${change.kind === 'period' ? '经期' : '便签'}：${change.text}`
+        ),
+        '请先调用 readCalendarNotes 读取日历并确认看到；读取后未读会清掉。看完再自然回应用户。'
+      ].join('\n')
+    : '';
+  let latestUserMessageIndex = -1;
+  requestMessages.forEach((message, index) => {
+    if (message.role === 'user') latestUserMessageIndex = index;
+  });
+  const requestMessagesWithCalendarNotice = calendarNoticeText && latestUserMessageIndex >= 0
+    ? requestMessages.map((message, index) => index === latestUserMessageIndex
+      ? {
+          ...message,
+          requestContent: [
+            calendarNoticeText,
+            message.requestContent ?? message.content
+          ].filter(Boolean).join('\n\n')
+        }
+      : message)
+    : requestMessages;
+
   const {
     collaboratorForReply,
     assistantName,
@@ -357,6 +392,7 @@ async function requestReplyRound({
   let latestTaskState = activeRequestSnapshot.currentTask ?? null;
   let nextTaskActivationEnforcement: TaskActivationEnforcement | null = null;
   let requestAudit: AssistantRequestAudit | null = null;
+  let obRecall: ObRecallResult | null = null;
 
   streaming.start();
   recordChatSendPerformanceMark(conversationId, '聊天发送 · 占位消息已显示');
@@ -367,11 +403,14 @@ async function requestReplyRound({
       providers: activeRequestSnapshot.providers,
       globalApi: activeRequestSnapshot.globalApi,
       memoryVectorRetrieval: activeRequestSnapshot.memoryVectorRetrieval,
+      // OB 自动召回用：设置是全局的，密码在安全存储里；两个都取不到就自然跳过。
+      obBrain: useRuntimeStore.getState().obBrain,
+      loadObPassword: readObPassword,
       imageUnderstanding: activeRequestSnapshot.imageUnderstanding,
       persona: collaboratorForReply,
       personas: activeRequestSnapshot.personas,
       semanticRecallEnabled: activeRequestSnapshot.semanticRecallEnabled,
-      messages: requestMessages,
+      messages: requestMessagesWithCalendarNotice,
       semanticRecallConversations: activeRequestSnapshot.semanticRecallConversations ?? activeRequestSnapshot.conversations,
       loadSemanticRecallConversations,
       activeConversationId: conversationId,
@@ -383,6 +422,9 @@ async function requestReplyRound({
       onProgress: streaming.queueProgress,
       onAudit: (audit) => {
         requestAudit = audit;
+      },
+      onObRecall: (recall) => {
+        obRecall = recall;
       },
       onImageUnderstandingResults: (results) => {
         const patchesByMessageId = new Map<string, Map<string, string>>();
@@ -504,7 +546,8 @@ async function requestReplyRound({
       visibleContent,
       reply,
       nativeToolCalls: storedToolCalls,
-      memoryEvidence: buildChatMemoryEvidenceFromAudit(requestAudit)
+      memoryEvidence: buildChatMemoryEvidenceFromAudit(requestAudit),
+      obRecall: buildChatObRecallEvidence(obRecall)
     }));
     recordChatSendPerformanceMark(conversationId, '聊天发送 · 最终消息已提交', {
       extra: [
@@ -858,6 +901,9 @@ async function requestReplyRound({
       updatedAt: Date.now()
     });
 
+    if (unreadCalendarChanges.length > 0) {
+      markCalendarUnreadChangesSeen(collaboratorId);
+    }
     streaming.scheduleLifecycleRelease(320);
     preserveStreamingLifecycle = true;
     finishChatSendPerformanceTrace(conversationId, 'completed');

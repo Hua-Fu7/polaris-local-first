@@ -149,11 +149,12 @@ describe('provider runtime characterization fixtures', () => {
       }
     }));
 
+    // 思考模型支持 tool_choice: auto，但思考模式下不支持 required（会 400）。
     expect(deepSeek.tools).toEqual(expect.objectContaining({
       mode: 'native',
       historyMode: 'native-with-transcript-fallback',
       promptProtocol: 'native-first',
-      choiceControl: 'none',
+      choiceControl: 'auto',
       requiredChoice: false
     }));
   });
@@ -455,7 +456,16 @@ describe('provider runtime characterization fixtures', () => {
 
     expect(anthropicEvents).toEqual(expect.arrayContaining([
       { type: 'reasoning.delta', text: 'step', mode: 'text' },
-      { type: 'usage', usage: { inputTokens: 2, outputTokens: 5, totalTokens: 7 } }
+      // 没有缓存字段时，input_tokens 就是全部输入，且全部算未命中
+      {
+        type: 'usage',
+        usage: {
+          inputTokens: 2,
+          outputTokens: 5,
+          totalTokens: 7,
+          cacheMissInputTokens: 2
+        }
+      }
     ]));
 
     const responsesEvents = parseProviderRuntimeStreamEvents({

@@ -410,10 +410,11 @@ describe('createStreamingSession', () => {
         true
       );
       flushNextFrame();
+      // 只有思考在流时，气泡还是"准备中"：思考不进正文，prelude 继续顶着。
       expect(currentChrome()).toEqual({
         lifecycle: 'streaming-live',
         chrome: {
-          showPrelude: false,
+          showPrelude: true,
           showHint: false,
           showLiveHint: false
         },

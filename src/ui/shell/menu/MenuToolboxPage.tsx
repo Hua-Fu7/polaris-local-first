@@ -82,6 +82,11 @@ const TOOLBOX_TOGGLE_META: Record<PolarisToolPromptGroup, { icon: IconName; labe
     labelKey: 'settings.toolbox.group.attachment.label',
     descriptionKey: 'settings.toolbox.group.attachment.detail'
   },
+  voice: {
+    icon: 'voice',
+    labelKey: 'settings.toolbox.group.voice.label',
+    descriptionKey: 'settings.toolbox.group.voice.detail'
+  },
   generation: {
     icon: 'zap',
     labelKey: 'settings.toolbox.group.generation.label',
@@ -131,6 +136,11 @@ const TOOLBOX_TOGGLE_META: Record<PolarisToolPromptGroup, { icon: IconName; labe
     icon: 'sparkle',
     labelKey: 'settings.toolbox.group.proactive.label',
     descriptionKey: 'settings.toolbox.group.proactive.detail'
+  },
+  voiceCall: {
+    icon: 'voice',
+    labelKey: 'settings.toolbox.group.voiceCall.label',
+    descriptionKey: 'settings.toolbox.group.voiceCall.detail'
   }
 };
 

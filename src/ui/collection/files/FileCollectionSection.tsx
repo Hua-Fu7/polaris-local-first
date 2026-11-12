@@ -1,8 +1,9 @@
 import type { CollectionFileCard } from '../../../app/collection/collectionFileCards';
 import { useI18n } from '../../../i18n';
 import { useAssetObjectUrl } from '../../useAssetObjectUrl';
+import { ArtifactRow } from '../artifact/ArtifactRow';
 import { CollectionEmptyStateWhisper } from '../grid/CollectionEmptyStateWhisper';
-import { collectionArchiveDateLabel } from '../collectionUtils';
+import { Icon, type IconName } from '../../Icon';
 
 type FileCollectionSectionProps = {
   cardsExpanded: boolean;
@@ -28,13 +29,19 @@ function formatFileTypeLabel(mimeType: string, name: string) {
   return 'FILE';
 }
 
-function FileCard({
+function resolveFileIcon(mimeType: string, name: string): IconName {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.includes('pdf')) return 'fileText';
+  if (mimeType.includes('zip') || mimeType.includes('archive')) return 'folder';
+  return 'fileText';
+}
+
+/** 我发的附件：一行一个，跟作品列表同一种行，只是图标和类型不同。 */
+function FileRow({
   card,
-  cardsExpanded,
   onOpenFileSource
 }: {
   card: CollectionFileCard;
-  cardsExpanded: boolean;
   onOpenFileSource: (card: CollectionFileCard) => void;
 }) {
   const { t } = useI18n();
@@ -42,72 +49,40 @@ function FileCard({
   const canOpenFile = Boolean(assetUrl);
 
   return (
-    <article
-      className={`card file-collection-card actionable-card ${cardsExpanded ? 'editing' : 'viewing'} ${canOpenFile ? 'file-openable' : 'file-unavailable'}`}
-    >
-      {canOpenFile ? (
-        <a
-          href={assetUrl ?? undefined}
-          target="_blank"
-          rel="noreferrer"
-          className="file-card-main"
-          aria-label={t('collection.files.openAria', { name: card.name })}
-          title={card.name}
-        >
-          <div className="card-meta-row">
-            <small>{card.conversationTitle}</small>
-            <small>{collectionArchiveDateLabel(card.updatedAt)}</small>
-          </div>
-          <div className="file-card-topline">
-            <span className="file-card-type-pill">{formatFileTypeLabel(card.mimeType, card.name)}</span>
-            <span className="file-card-fixed-tag">{t('collection.files.fileTag')}</span>
-          </div>
-          <h3>{card.name}</h3>
-          <p className="file-card-subline">{`${card.mimeType} · ${formatAttachmentSize(card.size)}`}</p>
-          <p className="file-card-preview">{card.textPreview ?? t('collection.files.openableFallbackPreview')}</p>
-        </a>
-      ) : (
-        <div className="file-card-main" aria-label={t('collection.files.unavailableAria', { name: card.name })}>
-          <div className="card-meta-row">
-            <small>{card.conversationTitle}</small>
-            <small>{collectionArchiveDateLabel(card.updatedAt)}</small>
-          </div>
-          <div className="file-card-topline">
-            <span className="file-card-type-pill">{formatFileTypeLabel(card.mimeType, card.name)}</span>
-            <span className="file-card-fixed-tag">{t('collection.files.fileTag')}</span>
-          </div>
-          <h3>{card.name}</h3>
-          <p className="file-card-subline">{`${card.mimeType} · ${formatAttachmentSize(card.size)}`}</p>
-          <p className="file-card-preview">{card.textPreview ?? t('collection.files.unavailableFallbackPreview')}</p>
-        </div>
-      )}
-      <div className="file-card-actions">
-        {canOpenFile ? (
-          <a
-            href={assetUrl ?? undefined}
-            download={card.name}
-            className="file-card-action"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {t('collection.files.download')}
-          </a>
-        ) : null}
+    <ArtifactRow
+      fileName={card.name}
+      icon={resolveFileIcon(card.mimeType, card.name)}
+      kindLabel={formatFileTypeLabel(card.mimeType, card.name)}
+      language={formatAttachmentSize(card.size)}
+      activateLabel={t('collection.files.openAria', { name: card.name })}
+      openLabel={t('collection.files.download')}
+      onActivate={() => {
+        if (assetUrl) window.open(assetUrl, '_blank', 'noreferrer');
+        else onOpenFileSource(card);
+      }}
+      onOpen={canOpenFile ? () => {
+        const anchor = document.createElement('a');
+        anchor.href = assetUrl ?? '';
+        anchor.download = card.name;
+        anchor.rel = 'noreferrer';
+        anchor.click();
+      } : () => onOpenFileSource(card)}
+      trailing={(
         <button
           type="button"
-          className="file-card-action secondary"
+          aria-label={t('collection.files.backToChat')}
           onClick={() => onOpenFileSource(card)}
         >
-          {t('collection.files.backToChat')}
+          <Icon name="chevron" size={13} />
         </button>
-      </div>
-    </article>
+      )}
+    />
   );
 }
 
 export function FileCollectionSection({
-  cardsExpanded,
   cards,
-  showLead = false,
+  showLead = true,
   onOpenFileSource
 }: FileCollectionSectionProps) {
   const { t, formatNumber } = useI18n();
@@ -131,14 +106,9 @@ export function FileCollectionSection({
           <small>{t('collection.files.leadCount', { count: formatNumber(cards.length) })}</small>
         </div>
       ) : null}
-      <div className="grid collection-file-grid">
+      <div className="code-artifact-list">
         {cards.map((card) => (
-          <FileCard
-            key={card.id}
-            card={card}
-            cardsExpanded={cardsExpanded}
-            onOpenFileSource={onOpenFileSource}
-          />
+          <FileRow key={card.id} card={card} onOpenFileSource={onOpenFileSource} />
         ))}
       </div>
     </section>

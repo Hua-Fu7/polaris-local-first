@@ -16,6 +16,8 @@ function buildItem(index: number, role: ChatMessage['role'] = 'assistant'): Time
   return {
     message: buildMessage(index, role),
     toolMessages: [],
+    thinkingTimelineMessages: [],
+    ownsThinkingTimeline: false,
     messageCycleIndex: index,
     userBubbleIndex: role === 'user' ? index : undefined,
     isAssistantContinuation: false,
@@ -85,3 +87,4 @@ describe('resolveTimelineWindow', () => {
     expect(window.bottomSpacerHeight).toBeGreaterThan(0);
   });
 });
+

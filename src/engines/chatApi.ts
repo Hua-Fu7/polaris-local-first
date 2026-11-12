@@ -63,7 +63,8 @@ export async function requestAssistantReply(params: RequestAssistantReplyParams)
     preferredOpenAiToolHistoryMode = 'native',
     signal,
     onProgress,
-    onBuiltRequest
+    onBuiltRequest,
+    forceToolChoice = false
   } = params;
   if (!api.apiKey.trim() && !isPolarisBuiltInProvider(api)) throw new Error('请先在设置里填写 API Key');
 
@@ -88,7 +89,8 @@ export async function requestAssistantReply(params: RequestAssistantReplyParams)
       context: retryContext,
       sessionId,
       bodyOverrides: disableStreamingFallback ? { stream: false } : undefined,
-      openAiToolHistoryMode
+      openAiToolHistoryMode,
+      forceToolChoice
     });
     if (shouldUseTranscriptToolHistoryForRequest(request, openAiToolHistoryMode)) {
       openAiToolHistoryMode = 'transcript';
@@ -98,7 +100,8 @@ export async function requestAssistantReply(params: RequestAssistantReplyParams)
         context: retryContext,
         sessionId,
         bodyOverrides: disableStreamingFallback ? { stream: false } : undefined,
-        openAiToolHistoryMode
+        openAiToolHistoryMode,
+        forceToolChoice
       });
     }
     if (outputTokenBudgetFallback !== null) {

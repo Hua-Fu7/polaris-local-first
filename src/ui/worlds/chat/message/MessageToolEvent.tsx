@@ -107,7 +107,8 @@ export function MessageToolEvent({
     Boolean(detailCopy.trim())
     && !navigationOnlyCopy
     && !hasWriteDetails
-    && normalizeCopy(detailCopy) !== normalizeCopy(expandedSummary);
+    && normalizeCopy(detailCopy) !== normalizeCopy(expandedSummary)
+    && normalizeCopy(detailCopy) !== normalizeCopy(expandedTitle);
   const canCopyDetail =
     Boolean(detailCopy.trim())
     && !navigationOnlyCopy
@@ -387,3 +388,4 @@ export function MessageToolEvent({
     </div>
   );
 }
+

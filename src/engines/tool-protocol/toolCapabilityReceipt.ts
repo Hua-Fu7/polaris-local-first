@@ -33,6 +33,7 @@ export const TOOL_GROUP_ORDER: PolarisRegistryToolGroup[] = [
   'theme-stable',
   'theme-creative',
   'attachment',
+  'voice',
   'generation',
   'archive',
   'web',
@@ -40,7 +41,8 @@ export const TOOL_GROUP_ORDER: PolarisRegistryToolGroup[] = [
   'memory',
   'memoryRecall',
   'memoryWrite',
-  'proactive'
+  'proactive',
+  'voiceCall'
 ];
 
 export const TOOL_GROUP_LABELS: Record<PolarisRegistryToolGroup, string> = {
@@ -54,6 +56,7 @@ export const TOOL_GROUP_LABELS: Record<PolarisRegistryToolGroup, string> = {
   'theme-stable': '稳态换肤',
   'theme-creative': '创意换肤',
   attachment: '附件',
+  voice: '语音',
   generation: '生成',
   archive: '压缩包',
   web: '联网',
@@ -62,7 +65,8 @@ export const TOOL_GROUP_LABELS: Record<PolarisRegistryToolGroup, string> = {
   memory: '长期资料',
   memoryRecall: '主动回忆',
   memoryWrite: '写入记忆',
-  proactive: '主动消息'
+  proactive: '主动消息',
+  voiceCall: '通话'
 };
 
 function groupNativeTools(tools: PolarisToolDefinition[]) {

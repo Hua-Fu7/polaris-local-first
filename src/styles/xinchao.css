@@ -1,0 +1,347 @@
+.xinchao-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 2px 28px;
+}
+
+.xinchao-hero-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  min-height: 150px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, #8b9cff 26%, var(--border));
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 88% 10%, color-mix(in srgb, #ff8ac7 20%, transparent), transparent 38%),
+    linear-gradient(145deg, color-mix(in srgb, #7ed7ff 12%, var(--surface-solid)), color-mix(in srgb, #8b9cff 10%, var(--surface-solid)));
+}
+
+.xinchao-hero-mark {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  background: linear-gradient(145deg, color-mix(in srgb, #7ed7ff 28%, var(--surface-solid)), color-mix(in srgb, #ff8ac7 22%, var(--surface-solid)));
+  color: #ff8ac7;
+  box-shadow: 0 12px 28px color-mix(in srgb, #6544a8 20%, transparent);
+}
+
+.xinchao-hero-copy {
+  min-width: 0;
+}
+
+.xinchao-kicker {
+  color: #a8b8ff;
+  font-size: var(--type-tiny);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.xinchao-hero-copy h2 {
+  margin: 5px 0 4px;
+  color: var(--text);
+  font-size: 20px;
+}
+
+.xinchao-hero-copy p,
+.xinchao-caption,
+.xinchao-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-small);
+  line-height: 1.55;
+}
+
+.xinchao-state-pill {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #7ed7ff 16%, var(--surface-solid));
+  color: color-mix(in srgb, #7ed7ff 72%, var(--text));
+  font-size: var(--type-tiny);
+}
+
+.xinchao-state-pill.is-sleeping {
+  background: color-mix(in srgb, #8b9cff 18%, var(--surface-solid));
+  color: #b9c2ff;
+}
+
+.xinchao-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.xinchao-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+}
+
+.xinchao-drive-card,
+.xinchao-thought-card {
+  grid-column: 1 / -1;
+}
+
+.xinchao-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.xinchao-card-head strong {
+  color: var(--text);
+  font-size: var(--type-body);
+}
+
+.xinchao-card-head span,
+.xinchao-thought-list span {
+  color: var(--text-muted);
+  font-size: var(--type-tiny);
+}
+
+.xinchao-drive-list,
+.xinchao-thought-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.xinchao-drive-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+  color: var(--text-soft);
+  font-size: var(--type-small);
+}
+
+.xinchao-drive-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 52%, transparent);
+}
+
+.xinchao-drive-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7ed7ff, #8b9cff, #ff8ac7);
+}
+
+.xinchao-intent {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.xinchao-thought-list p {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+  color: var(--text-soft);
+  font-size: var(--type-small);
+  line-height: 1.5;
+}
+
+.xinchao-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+  color: var(--text-muted);
+  font-size: var(--type-tiny);
+}
+
+.xinchao-footer-actions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.xinchao-inject-toggle {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.xinchao-inject-toggle.is-on {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.xinchao-reset {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  font: inherit;
+}
+
+@media (max-width: 720px) {
+  .xinchao-hero-card {
+    grid-template-columns: 90px minmax(0, 1fr);
+  }
+
+  .xinchao-hero-mark {
+    width: 62px;
+    height: 62px;
+  }
+
+  .xinchao-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .xinchao-drive-card,
+  .xinchao-thought-card {
+    grid-column: auto;
+  }
+}
+
+/* 十二维心潮花：花瓣长度随驱动力强度增长。 */
+.xinchao-flower {
+  display: block;
+  width: min(100%, 340px);
+  aspect-ratio: 1;
+  margin: 6px auto 2px;
+  overflow: visible;
+}
+
+.xinchao-flower-grid {
+  fill: none;
+  stroke: color-mix(in srgb, var(--border) 58%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 7;
+}
+
+.xinchao-flower-grid.is-inner {
+  stroke-dasharray: none;
+}
+
+.xinchao-flower-petal-base {
+  fill: color-mix(in srgb, var(--surface-solid) 70%, #f2d5ea 30%);
+  stroke: color-mix(in srgb, #f0bade 32%, transparent);
+  stroke-width: 1;
+}
+
+.xinchao-flower-petal {
+  filter: drop-shadow(0 3px 6px color-mix(in srgb, #d77ab8 16%, transparent));
+}
+
+.xinchao-flower-label {
+  fill: var(--text-soft);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.xinchao-flower-core {
+  fill: color-mix(in srgb, #fff 82%, #f0bade 18%);
+  stroke: color-mix(in srgb, #eca7d0 52%, transparent);
+  stroke-width: 1.5;
+}
+
+.xinchao-flower-core-dot {
+  fill: #e9a0cd;
+}
+
+/* 参考花瓣基准：固定标签环，花瓣从花心长出。 */
+.xinchao-flower {
+  width: min(100%, 400px);
+  aspect-ratio: 1;
+  margin: 4px auto 0;
+  overflow: visible;
+}
+
+.xinchao-flower-petal {
+  filter: none;
+  transition: opacity 160ms ease;
+}
+
+.xinchao-flower-label {
+  fill: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.xinchao-flower-core {
+  fill: var(--surface-solid);
+  stroke: #e3d9ee;
+  stroke-width: 3;
+}
+
+.xinchao-drive-values {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
+}
+
+.xinchao-drive-value {
+  min-width: 0;
+}
+
+.xinchao-drive-value-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  color: var(--text-soft);
+  font-size: var(--type-small);
+}
+
+.xinchao-drive-value-head span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xinchao-drive-value-head strong {
+  flex: 0 0 auto;
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.xinchao-drive-value-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 52%, transparent);
+}
+
+.xinchao-drive-value-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8fd3ff 0%, #b7a8ff 52%, #f18fbe 100%);
+  transition: width 220ms ease, opacity 220ms ease;
+}

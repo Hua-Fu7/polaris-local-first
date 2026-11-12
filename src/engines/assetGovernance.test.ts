@@ -165,6 +165,7 @@ describe('collectReferencedAssetIds', () => {
       starGlow: 0.46,
       starScale: 1,
       starWarmth: 0.54,
+      voiceCallOrbColor: null,
       backgroundAssetId: 'asset-background',
       customFontAssetIds: [],
       customFontScopeAssignments: {
@@ -468,6 +469,7 @@ describe('collectReferencedAssetIds', () => {
       starGlow: 0.46,
       starScale: 1,
       starWarmth: 0.54,
+      voiceCallOrbColor: null,
       backgroundAssetId: 'asset-customization-background',
       customFontAssetIds: ['asset-customization-font'],
       customFontScopeAssignments: {
@@ -847,6 +849,7 @@ describe('buildAssetAuditSummary', () => {
       starGlow: 0.46,
       starScale: 1,
       starWarmth: 0.54,
+      voiceCallOrbColor: null,
       backgroundAssetId: 'asset-background',
       customFontAssetIds: ['asset-font'],
       customFontScopeAssignments: {

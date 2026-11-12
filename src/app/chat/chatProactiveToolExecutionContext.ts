@@ -1,16 +1,13 @@
 import type { ToolContext } from '../../engines/toolExecutorTypes';
+import { describeTriggerSchedule } from '../../engines/triggers';
 import type { PolarisTriggerRule } from '../../types/domain';
 import type { ChatToolStoreBindings } from './chatToolActionTypes';
 
 function formatTriggerScheduleLabel(action: Parameters<ToolContext['createProactiveMessageRule']>[0]) {
-  return action.schedule.kind === 'daily'
-    ? `每天 ${action.schedule.time}`
-    : `每隔 ${action.schedule.everyMinutes} 分钟`;
+  return describeTriggerSchedule(action.schedule);
 }
 function formatRuleScheduleLabel(rule: PolarisTriggerRule) {
-  return rule.schedule.kind === 'daily'
-    ? `每天 ${rule.schedule.time}`
-    : `每隔 ${rule.schedule.everyMinutes} 分钟`;
+  return describeTriggerSchedule(rule.schedule);
 }
 
 function formatRuleTargetLabel(rule: PolarisTriggerRule) {

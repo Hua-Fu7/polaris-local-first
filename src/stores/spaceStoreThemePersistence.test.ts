@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { buildThemeFrameFromPresetId } from '../config/theme/themePresets';
 import { createInitialThemeState } from './spaceStoreTheme';
 import type { SpaceFrontstageState, SpaceThemeState } from './spaceStoreTypes';
@@ -354,12 +354,12 @@ describe('migratePersistedSpaceState', () => {
           previewId: 'preview-1',
           conversationId: 'conv-1',
           kind: 'appendThemeCss',
-          label: '整页 · 吐司气泡',
-          summary: '追加气泡 CSS',
+          label: '鏁撮〉 路 鍚愬徃姘旀场',
+          summary: '杩藉姞姘旀场 CSS',
           status: 'applied',
           layer: 'generated',
           scope: 'chat',
-          surfaceLabels: ['用户气泡'],
+          surfaceLabels: ['鐢ㄦ埛姘旀场'],
           patchMode: 'merge',
           detailText: '.bubble.user { border-radius: 999px; }',
           createdAt: 1,
@@ -498,7 +498,7 @@ describe('migratePersistedSpaceState', () => {
         id: 'preview-1',
         conversationId: 'conv-1',
         before: committedFrame,
-        pending: '试穿纸页主题'
+        pending: '璇曠┛绾搁〉涓婚'
       },
       theme: {
         ...createInitialThemeState(),

@@ -89,7 +89,7 @@ describe('requestPreparationAudit tooling strategy', () => {
     expect(result.tooling.enabled).toBe(true);
   });
 
-  it('keeps native tools but omits unsupported tool choice for DeepSeek reasoner', () => {
+  it('keeps native tools but downgrades tool choice to auto for DeepSeek reasoner', () => {
     const api = createProvider({
       id: 'deepseek',
       name: 'DeepSeek',
@@ -113,8 +113,9 @@ describe('requestPreparationAudit tooling strategy', () => {
     }, providerCapabilities);
 
     expect(result.toolRequest.tools.length).toBeGreaterThan(0);
-    expect(result.toolRequest.toolChoice).toBeUndefined();
+    // DeepSeek 思考模型支持 tool_choice 但不支持 required，force 模式被降级成 auto。
+    expect(result.toolRequest.toolChoice).toBe('auto');
     expect(result.tooling.enabled).toBe(true);
-    expect(result.tooling.toolChoice).toBeNull();
+    expect(result.tooling.toolChoice).toBe('auto');
   });
 });

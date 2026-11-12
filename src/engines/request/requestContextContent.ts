@@ -20,6 +20,17 @@ function shouldAutoInlineAttachmentText(attachment: ChatAttachment) {
   return !attachment.clearedAt && attachment.kind === 'file' && Boolean(attachment.textContent?.trim());
 }
 
+function isStandaloneUserSignal(content: string) {
+  const compact = content.trim().replace(/\s+/g, '');
+  if (!compact || compact.length > 12) return false;
+  return /^[\d\p{P}\p{S}]+$/u.test(compact);
+}
+
+function formatStandaloneUserSignal(content: string) {
+  const trimmed = content.trim();
+  return isStandaloneUserSignal(trimmed) ? `[用户单独发来] ${trimmed}` : content.trim();
+}
+
 function buildAttachmentBlock(
   attachment: ChatAttachment,
   remainingInlineChars: number
@@ -115,7 +126,7 @@ export function buildMessageContent(args: {
     ? supplementalImageParts.map(() => '[系统附加结构图：当前通道不支持直接看图，请结合上面的编号规则选择 targets。]')
     : [];
   const textSections = [
-    message.content.trim(),
+    message.role === 'user' ? formatStandaloneUserSignal(message.content) : message.content.trim(),
     ...attachmentTextBlocks,
     ...fallbackImageLines,
     ...unavailableInlineImageLines,

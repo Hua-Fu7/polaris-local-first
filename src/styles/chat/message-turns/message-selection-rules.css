@@ -45,3 +45,24 @@
   -webkit-user-select: text;
   -webkit-touch-callout: default;
 }
+
+/* 思路摘要 / 思考链：允许长按选中、复制、翻译 */
+.app-shell .message-thinking-projection,
+.app-shell .message-thinking-projection *,
+.app-shell .message-thinking-inline,
+.app-shell .message-thinking-inline *,
+.app-shell .thinking-summary-sheet,
+.app-shell .thinking-summary-sheet * {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* 其中的按钮与遮罩保持不可选，避免抢走点按手势 */
+.app-shell .thinking-summary-sheet button,
+.app-shell .thinking-summary-sheet button *,
+.app-shell .thinking-summary-backdrop {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}

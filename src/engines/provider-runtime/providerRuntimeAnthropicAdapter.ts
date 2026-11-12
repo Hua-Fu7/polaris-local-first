@@ -32,18 +32,21 @@ type AnthropicContentBlock =
         media_type: string;
         data: string;
       };
+      cache_control?: AnthropicCacheControl;
     }
   | {
       type: 'tool_use';
       id: string;
       name: string;
       input: Record<string, unknown>;
+      cache_control?: AnthropicCacheControl;
     }
   | {
       type: 'tool_result';
       tool_use_id: string;
       content: string;
       is_error?: boolean;
+      cache_control?: AnthropicCacheControl;
     };
 
 type AnthropicSystemMessage = AssistantContextMessage & { content: string };
@@ -178,7 +181,36 @@ function buildAnthropicMessages(context: ProviderRuntimeRequestInput['context'])
     );
   }
 
+  appendTailCacheControl(messages);
+
   return messages;
+}
+
+/**
+ * 在最后一轮对话上补一个缓存断点。
+ *
+ * 原来只在 system 和 tools 上打点，对话本身没有断点 —— 每轮新增长出来的内容
+ * 永远不会被标记成"可缓存"，下一轮自然读不回来，表现就是「只写不读」。
+ * Anthropic 允许最多 4 个断点，system + tools + 这里 1 个刚好在额度内。
+ */
+function appendTailCacheControl(
+  messages: Array<{ role: 'user' | 'assistant'; content: string | AnthropicContentBlock[] }>
+) {
+  const lastIndex = messages.length - 1;
+  if (lastIndex < 0) return;
+  const last = messages[lastIndex];
+  const cacheControl = { type: 'ephemeral' as const };
+  if (typeof last.content === 'string') {
+    messages[lastIndex] = {
+      role: last.role,
+      content: [{ type: 'text', text: last.content, cache_control: cacheControl }]
+    };
+    return;
+  }
+  if (!last.content.length) return;
+  const blocks = [...last.content];
+  blocks[blocks.length - 1] = { ...blocks[blocks.length - 1], cache_control: cacheControl };
+  messages[lastIndex] = { role: last.role, content: blocks };
 }
 
 function resolveAnthropicSystemCacheControlIndexes(
@@ -265,6 +297,38 @@ function buildAnthropicTools(tools: AssistantRequestTool[] | undefined) {
   }));
 }
 
+/**
+ * 临时诊断：给请求里每一段算个指纹，两次请求一比就知道前缀从哪段开始变。
+ * 定位缓存「只写不读」用，查完删掉。
+ */
+function fingerprint(value: unknown): string {
+  const text = typeof value === 'string' ? value : JSON.stringify(value ?? '');
+  let hash = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
+  }
+  return `${hash.toString(36)}:${text.length}`;
+}
+
+function logCacheFingerprint(body: Record<string, unknown>) {
+  try {
+    const messages = Array.isArray(body.messages) ? body.messages as unknown[] : [];
+    const systemBlocks = Array.isArray(body.system) ? body.system as Array<{ text?: string }> : [];
+    const parts = [
+      `sys=${fingerprint(body.system)}`,
+      `tools=${fingerprint(body.tools)}`,
+      `n=${messages.length}`,
+      // 每块系统提示单独算指纹 + 前 60 字，方便看出是哪一段在变
+      ...systemBlocks.map((block, index) =>
+        `s${index}=${fingerprint(block)}~${String(block?.text ?? '').slice(0, 60).replace(/\s+/g, ' ')}`),
+      ...messages.map((message, index) => `${index}=${fingerprint(message)}`)
+    ];
+    console.log('[cache-fp]', parts.join(' '));
+  } catch {
+    // 忽略
+  }
+}
+
 export function buildAnthropicRequest(input: ProviderRuntimeRequestInput) {
   const { api, context, sessionId, advanced, bodyOverrides } = input;
   const endpoint = buildApiEndpoint(api.baseUrl, api.path);
@@ -325,6 +389,8 @@ export function buildAnthropicRequest(input: ProviderRuntimeRequestInput) {
       body.tool_choice = { type: 'auto' };
     }
   }
+
+  logCacheFingerprint(body);
 
   return buildRequestResult({
     endpoint,

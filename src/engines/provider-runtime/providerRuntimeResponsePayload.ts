@@ -48,24 +48,32 @@ function applyTokenUsage(target: ReplyAccumulator, usage: ChatTokenUsage | undef
 function parseAnthropicUsage(rawUsage: unknown): ChatTokenUsage | undefined {
   const usage = readObject(rawUsage);
   if (!usage) return undefined;
-  const inputTokens = readNumber(usage.input_tokens);
+  const uncachedInputTokens = readNumber(usage.input_tokens);
   const outputTokens = readNumber(usage.output_tokens);
   const cachedInputTokens = readNumber(usage.cache_read_input_tokens);
   const cacheCreationInputTokens = readNumber(usage.cache_creation_input_tokens);
   const totalTokens = [
-    inputTokens,
+    uncachedInputTokens,
     outputTokens,
     cachedInputTokens,
     cacheCreationInputTokens
   ].filter((value): value is number => typeof value === 'number')
     .reduce((total, value) => total + value, 0);
 
+  // Anthropic 的 input_tokens **不含**缓存读写，三者是并列的：
+  // 总数要加回去，未命中就是原始的 input_tokens。
+  // 以前这里不算 miss，统计里 cached/(cached+0) 恒等于 100%。
+  const inputTokens = typeof uncachedInputTokens === 'number'
+    ? uncachedInputTokens + (cachedInputTokens ?? 0) + (cacheCreationInputTokens ?? 0)
+    : undefined;
+
   return compactTokenUsage({
     totalTokens: totalTokens > 0 ? totalTokens : undefined,
     inputTokens,
     outputTokens,
     cachedInputTokens,
-    cacheCreationInputTokens
+    cacheCreationInputTokens,
+    cacheMissInputTokens: uncachedInputTokens
   });
 }
 

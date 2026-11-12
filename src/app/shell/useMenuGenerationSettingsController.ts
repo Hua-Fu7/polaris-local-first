@@ -3,7 +3,8 @@ import type {
   ImageGenerationSettings,
   MemoryVectorRetrievalSettings,
   Persona,
-  VoiceGenerationSettings
+  VoiceGenerationSettings,
+  VoiceTranscriptionSettings
 } from '../../types/domain';
 
 type UseMenuGenerationSettingsControllerArgs = {
@@ -13,10 +14,12 @@ type UseMenuGenerationSettingsControllerArgs = {
   memoryVectorRetrieval: MemoryVectorRetrievalSettings;
   imageGeneration: ImageGenerationSettings;
   voiceGeneration: VoiceGenerationSettings;
+  voiceTranscription: VoiceTranscriptionSettings;
   setConversationSummaryModel: (patch: Partial<ConversationSummaryModelSettings>) => void;
   setMemoryVectorRetrieval: (patch: Partial<MemoryVectorRetrievalSettings>) => void;
   setImageGeneration: (patch: Partial<ImageGenerationSettings>) => void;
   setVoiceGeneration: (patch: Partial<VoiceGenerationSettings>) => void;
+  setVoiceTranscription: (patch: Partial<VoiceTranscriptionSettings>) => void;
 };
 
 export function isMenuMemorySearchAvailable(
@@ -34,10 +37,12 @@ export function useMenuGenerationSettingsController({
   memoryVectorRetrieval,
   imageGeneration,
   voiceGeneration,
+  voiceTranscription,
   setConversationSummaryModel,
   setMemoryVectorRetrieval,
   setImageGeneration,
-  setVoiceGeneration
+  setVoiceGeneration,
+  setVoiceTranscription
 }: UseMenuGenerationSettingsControllerArgs) {
   const activePersona = personas.find((persona) => persona.id === activeCollaboratorId) ?? null;
 
@@ -47,9 +52,11 @@ export function useMenuGenerationSettingsController({
     memorySearchAvailable: isMenuMemorySearchAvailable(activePersona, memoryVectorRetrieval),
     imageGeneration,
     voiceGeneration,
+    voiceTranscription,
     onSetConversationSummaryModel: setConversationSummaryModel,
     onSetMemoryVectorRetrieval: setMemoryVectorRetrieval,
     onSetImageGeneration: setImageGeneration,
-    onSetVoiceGeneration: setVoiceGeneration
+    onSetVoiceGeneration: setVoiceGeneration,
+    onSetVoiceTranscription: setVoiceTranscription
   };
 }

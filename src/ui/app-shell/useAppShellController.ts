@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildConversationCardSummary } from '../../app/collection/conversationCardSummary';
+import { closeHomeScreen } from '../../app/home/homeScreenStore';
 import { resolveCollectionRenderItemCount } from '../../app/shell/collectionRenderLoad';
 import { deriveAppShellState } from '../../app/shell/deriveAppShellState';
 import { useAppShellStoreBindings } from '../../app/shell/useAppShellStoreBindings';
@@ -143,6 +144,27 @@ export function useAppShellController() {
   );
 
   const collection = useCollectionShellState();
+  // 对话内搜索面板的开合状态放在 shell 层：入口在顶栏（chat 世界），面板本身挂在
+  // ChatWorld 里（那边才拿得到消息和聚焦能力）。
+  const [chatSearchOpen, setChatSearchOpen] = useState(false);
+  const chatSearch = useMemo(() => ({
+    open: chatSearchOpen,
+    setOpen: setChatSearchOpen,
+    close: () => setChatSearchOpen(false)
+  }), [chatSearchOpen]);
+  // 从 chat 世界按下左上角抽屉按钮时，抽屉只能长在 collection 世界里，
+  // 所以会先把世界切过去。这里记住"是聊着天打开的"，关闭抽屉时再原路退回。
+  const collaboratorDrawerReturnRef = useRef(false);
+  const collaboratorDrawerWasOpenRef = useRef(false);
+  useEffect(() => {
+    const wasOpen = collaboratorDrawerWasOpenRef.current;
+    collaboratorDrawerWasOpenRef.current = collection.collaboratorSwitchOpen;
+    if (wasOpen && !collection.collaboratorSwitchOpen && collaboratorDrawerReturnRef.current) {
+      collaboratorDrawerReturnRef.current = false;
+      setWorld('chat');
+    }
+  }, [collection.collaboratorSwitchOpen, setWorld]);
+
   const themeSession = useThemeSessionActions();
   const chatRuntimePort: AppTriggerChatRuntimePort = useMemo(() => ({
     generationByConversationId: chatUi.generationByConversationId,
@@ -219,6 +241,21 @@ export function useAppShellController() {
       setCollectionShelf
     }
   });
+  const menuOpenedFromChatRef = useRef(false);
+  const menuWasOpenRef = useRef(false);
+  useEffect(() => {
+    const menuOpen = overlays.modals.menuOpen;
+    if (!menuWasOpenRef.current && menuOpen) {
+      menuOpenedFromChatRef.current = activeWorld === 'chat';
+    }
+    if (menuWasOpenRef.current && !menuOpen) {
+      if (menuOpenedFromChatRef.current && activeWorld !== 'chat') {
+        setWorld('chat');
+      }
+      menuOpenedFromChatRef.current = false;
+    }
+    menuWasOpenRef.current = menuOpen;
+  }, [activeWorld, overlays.modals.menuOpen, setWorld]);
   const world = useAppShellWorldController({
     activeWorld,
     activeThemePreview,
@@ -227,6 +264,7 @@ export function useAppShellController() {
     toggleWorld,
     derived,
     collection,
+    chatSearch,
     navigationActions,
     chatUi,
     toggleMenu: overlays.toggleMenu,
@@ -275,6 +313,8 @@ export function useAppShellController() {
         clearPendingAttachments();
         clearPendingCardReference();
       }
+      // 点历史对话 = 进聊天，不能再停在上首页（同一个对话点第二次也要进去）。
+      closeHomeScreen();
       setActiveConversation(conversationId);
       setWorld('chat');
     },
@@ -303,12 +343,14 @@ export function useAppShellController() {
       clearPendingCardReference();
     }
     setFrontstageCollaboratorId(notification.collaboratorId);
+    closeHomeScreen();
     setActiveConversation(notification.conversationId);
     setWorld('chat');
     dismissReplyNotification(notification.id);
   };
   return {
     activeWorld,
+    onReturnToChat: () => setWorld('chat'),
     shellWorld: world.shellWorld,
     activeChatDensity: derived.activeChatDensity,
     customization,
@@ -325,10 +367,20 @@ export function useAppShellController() {
     collectionOpenCollaboratorBuilderForCreate: overlays.collectionOpenCollaboratorBuilderForCreate,
     collectionCreateCustomCollaborator: overlays.collectionCreateCustomCollaborator,
     collectionOpenProviderSettings: overlays.collectionOpenProviderSettings,
-    collectionOpenSettings: overlays.collectionOpenSettings,
+    collectionOpenSettings: () => {
+      const returnToChat = collaboratorDrawerReturnRef.current;
+      overlays.collectionOpenSettings();
+      if (returnToChat) {
+        collaboratorDrawerReturnRef.current = false;
+        setWorld('chat');
+      }
+    },
     openBackupSettings: () => overlays.openMenuAt('backup'),
     collectionOpenDesktopLocalSettings: overlays.collectionOpenDesktopLocalSettings,
     collectionDeleteCollaborator: overlays.collaboratorActions.deleteCollaboratorFromPanel,
+    collectionDrawerNavigate: () => {
+      collaboratorDrawerReturnRef.current = false;
+    },
     canReviveTheme: overlays.canReviveTheme,
     restoreLastThemeSkin: overlays.restoreLastThemeSkin,
     restoreDefaultTheme: overlays.restoreDefaultTheme,
@@ -337,6 +389,17 @@ export function useAppShellController() {
       state: {
         ...world.topbarProps.state,
         menuOpen: overlays.modals.menuOpen
+      },
+      actions: {
+        ...world.topbarProps.actions,
+        onToggleCollaboratorSwitch: () => {
+          const openedFromChat = !collection.collaboratorSwitchOpen && activeWorld === 'chat';
+          world.topbarProps.actions.onToggleCollaboratorSwitch();
+          collaboratorDrawerReturnRef.current = openedFromChat;
+          if (openedFromChat) {
+            setWorld('collection');
+          }
+        }
       }
     },
     chatRuntimePort,
@@ -366,3 +429,9 @@ export function useAppShellController() {
     collaboratorTransitionKey: frontstageCollaboratorId ?? '__aggregate__'
   };
 }
+
+
+
+
+
+

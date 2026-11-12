@@ -90,11 +90,21 @@ export function shouldSendTemperature(
 
 export function resolveOpenAiToolChoice(
   toolChoice: AssistantRequestContext['toolChoice'],
-  capability: ProviderCapability
+  capability: ProviderCapability,
+  options?: { forceRequired?: boolean }
 ) {
   if (capability.tools.choiceControl === 'none') return undefined;
   if (!toolChoice || toolChoice === 'none') return undefined;
   if (toolChoice !== 'required') return toolChoice;
+
+  // 判断层（来电接/拒、主动决策等）只有一个动作可选，需要模型「必须调用工具」。
+  // 但 capability 白名单对第三方模型（MiniMax / SiliconFlow / OpenRouter 等）保守地只给 `auto`，
+  // 导致 `tool_choice` 被降级、模型改用自然语言表态而不是调工具。
+  // `forceRequired` 让这类「结果驱动的判断层」穿透白名单，直接把 `required` 发出去——
+  // 但**只在 provider 真的支持 required 时**才敢穿透。DeepSeek 思考模型（deepseek-v4 等）
+  // 在思考模式下 required 会 400，`supportsRequiredChoice` 为 false，这里绝不能硬发。
+  if (options?.forceRequired && capability.tools.supportsRequiredChoice) return 'required';
+
   return capability.tools.choiceControl === 'required' ? 'required' : 'auto';
 }
 

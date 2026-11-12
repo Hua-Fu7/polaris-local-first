@@ -2,6 +2,7 @@ import type { AssistantToolContext } from '../assistantToolProtocol';
 import type { OpenAiToolHistoryMode } from '../provider-runtime/providerRuntimeOpenAiToolHistory';
 import type { ProviderHttpRequest } from '../provider-runtime';
 import type { AssistantRequestAudit } from './requestAudit';
+import type { ObRecallResult } from '../ombreBrain/obRecall';
 import { recordRequestDebug } from './requestDebugRecorder';
 import {
   prepareCollaboratorReplyRequest,
@@ -24,6 +25,7 @@ import type {
   ConversationTaskState,
   ImageUnderstandingSettings,
   MemoryVectorRetrievalSettings,
+  ObBrainSettings,
   Persona,
   ProviderProfile,
   ToolLedgerEntry
@@ -31,9 +33,12 @@ import type {
 
 function normalizeAssistantOutput<T extends AssistantReply | AssistantReplyProgress>(
   reply: T,
-  persona: Persona | null | undefined
+  persona: Persona | null | undefined,
+  options: { streamingInlineThinking?: boolean } = {}
 ): T {
-  const promoted = promoteInlineThinkingTags(reply);
+  const promoted = promoteInlineThinkingTags(reply, {
+    streaming: options.streamingInlineThinking === true
+  });
   return {
     ...promoted,
     content: applyRegexRules(promoted.content, persona?.advanced.regexRules, 'output'),
@@ -56,6 +61,8 @@ export async function requestCollaboratorReply(params: {
   providers?: ProviderProfile[];
   globalApi?: ProviderProfile;
   memoryVectorRetrieval?: MemoryVectorRetrievalSettings;
+  obBrain?: ObBrainSettings;
+  loadObPassword?: () => Promise<string>;
   imageUnderstanding?: ImageUnderstandingSettings;
   persona: Persona | null | undefined;
   personas?: Persona[];
@@ -73,12 +80,16 @@ export async function requestCollaboratorReply(params: {
   onProgress?: (reply: AssistantReplyProgress) => void;
   onAudit?: (audit: AssistantRequestAudit) => void;
   onImageUnderstandingResults?: (results: RequestImageUnderstandingResult[]) => void;
+  /** 这一轮 OB 召回的落地结果；界面拿它显示“召回 N 条 / 没连上”。 */
+  onObRecall?: (recall: ObRecallResult) => void;
 }): Promise<AssistantReply> {
   const {
     api,
     providers,
     globalApi,
     memoryVectorRetrieval,
+    obBrain,
+    loadObPassword,
     imageUnderstanding,
     persona,
     personas,
@@ -95,13 +106,16 @@ export async function requestCollaboratorReply(params: {
     signal,
     onProgress,
     onAudit,
-    onImageUnderstandingResults
+    onImageUnderstandingResults,
+    onObRecall
   } = params;
   const prepared = await prepareCollaboratorReplyRequest({
     api,
     providers,
     globalApi,
     memoryVectorRetrieval,
+    obBrain,
+    loadObPassword,
     imageUnderstanding,
     persona,
     personas,
@@ -117,6 +131,7 @@ export async function requestCollaboratorReply(params: {
     signal
   });
   onAudit?.(prepared.audit);
+  if (prepared.obRecall) onObRecall?.(prepared.obRecall);
   if (prepared.imageUnderstandingResults.length > 0) {
     onImageUnderstandingResults?.(prepared.imageUnderstandingResults);
   }
@@ -147,7 +162,7 @@ export async function requestCollaboratorReply(params: {
       },
       signal,
       onProgress: onProgress
-        ? (partialReply) => onProgress(normalizeAssistantOutput(partialReply, persona))
+        ? (partialReply) => onProgress(normalizeAssistantOutput(partialReply, persona, { streamingInlineThinking: true }))
         : undefined
     });
   } catch (error) {

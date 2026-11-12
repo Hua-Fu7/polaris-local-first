@@ -1,7 +1,7 @@
 import type { desktop as zhDesktop } from '../zh-CN/desktop';
 
 export const desktop = {
-  'desktop.navLabel': 'Polaris desktop navigation',
+  'desktop.navLabel': 'Solune desktop navigation',
   'desktop.expandSidebar': 'Expand desktop sidebar',
   'desktop.collapseSidebar': 'Collapse desktop sidebar',
   'desktop.expandSidebarTitle': 'Expand sidebar',

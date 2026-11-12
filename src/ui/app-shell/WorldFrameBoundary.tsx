@@ -3,6 +3,7 @@ import { recordClientError } from '../../app/bootstrap/clientErrorLog';
 import type { World } from '../../types/domain';
 import { createTranslator, useI18n, type I18nTranslator } from '../../i18n';
 import { useSpaceStore } from '../../stores/spaceStore';
+import { ChaoticOrbitLoader } from '../shell/ChaoticOrbitLoader';
 
 type WorldFrameBoundaryProps = {
   world: World;
@@ -42,7 +43,11 @@ export function WorldFrameFallback({ world }: { world: World }) {
   }, []);
 
   if (!showFallbackNotice) {
-    return <div className="world-frame-loading" aria-hidden="true" />;
+    return (
+      <div className="world-frame-loading" aria-hidden="true">
+        <ChaoticOrbitLoader size={36} />
+      </div>
+    );
   }
 
   return (

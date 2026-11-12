@@ -9,6 +9,7 @@ import type {
 import type { ToolAction } from './toolExecutorTypes';
 import { describeMemoryToolAction } from './toolExecutorDescribeMemory';
 import { describeProactiveMessageToolAction } from './toolExecutorDescribeProactiveMessage';
+import { describeVoiceCallToolAction, describeHangUpToolAction } from './toolExecutorDescribeVoiceCall';
 import { describeTaskToolAction } from './toolExecutorDescribeTask';
 import { describeToolInvocationToolAction } from './toolExecutorDescribeToolInvocation';
 import { describeDesktopToolAction } from './toolExecutorDescribeDesktop';
@@ -127,6 +128,10 @@ export function describeToolAction(action: ToolAction): ToolActionDescription {
     case 'updateProactiveMessageRule':
     case 'deleteProactiveMessageRule':
       return describeProactiveMessageToolAction(action);
+    case 'startVoiceCall':
+      return describeVoiceCallToolAction(action);
+    case 'hangUp':
+      return describeHangUpToolAction(action);
     case 'inspectAttachments':
     case 'webSearch':
     case 'readWebPage':
@@ -135,11 +140,16 @@ export function describeToolAction(action: ToolAction): ToolActionDescription {
     case 'createCalendarEvent':
     case 'updateCalendarEvent':
     case 'deleteCalendarEvent':
+    case 'readCalendarNotes':
+    case 'writeCalendarNote':
+    case 'updateCalendarNote':
+    case 'deleteCalendarNote':
     case 'readAttachmentText':
     case 'bundleAttachments':
     case 'createQrCode':
     case 'generateImage':
     case 'sendImageAttachment':
+    case 'sendVoiceMessage':
     case 'inspectImageAsset':
     case 'extractImagePalette':
     case 'createImageVariant':

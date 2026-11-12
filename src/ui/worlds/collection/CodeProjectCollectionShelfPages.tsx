@@ -153,6 +153,7 @@ export function CodeProjectCollectionShelfPages({
           personas={codeController.collaborators}
           activeConversationId={codeController.activeConversationId}
           fileCards={codeController.fileCards}
+          workspaceFiles={codeController.workspaceFileRows}
           hasStandaloneCards={codeController.hasStandaloneCards}
           activeCardId={codeController.activeCardId}
           spotlightCardId={codeController.spotlightCardId}

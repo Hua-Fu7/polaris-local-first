@@ -5,7 +5,7 @@ import { buildVisibleCollectionShelfNavItems } from './collectionShelfNav';
 describe('buildVisibleCollectionShelfNavItems', () => {
   const { t } = createTranslator('zh-CN');
 
-  it('keeps dialogue as the primary collection page and information as the last utility page', () => {
+  it('puts files first and keeps information as the last utility page', () => {
     const items = buildVisibleCollectionShelfNavItems(
       {
         dialogue: true,
@@ -17,7 +17,7 @@ describe('buildVisibleCollectionShelfNavItems', () => {
       t
     );
 
-    expect(items.map((item) => item.shelf)).toEqual(['dialogue', 'project', 'code', 'info']);
+    expect(items.map((item) => item.shelf)).toEqual(['code', 'project', 'dialogue', 'info']);
   });
 
   it('reveals shelves only when their real content exists', () => {
@@ -32,6 +32,6 @@ describe('buildVisibleCollectionShelfNavItems', () => {
       t
     );
 
-    expect(items.map((item) => item.shelf)).toEqual(['dialogue', 'project', 'code', 'image', 'info']);
+    expect(items.map((item) => item.shelf)).toEqual(['code', 'project', 'dialogue', 'image', 'info']);
   });
 });

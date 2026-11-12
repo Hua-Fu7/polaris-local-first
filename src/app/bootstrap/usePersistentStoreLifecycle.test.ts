@@ -401,6 +401,7 @@ describe('persistent store lifecycle guards', () => {
     const imageGeneration = {};
     const imageUnderstanding = {};
     const voiceGeneration = {};
+    const voiceTranscription = {};
     const toolPromptPreferences = {};
     const mcpServers: unknown[] = [];
     const companionHost = {};
@@ -423,6 +424,7 @@ describe('persistent store lifecycle guards', () => {
         imageGeneration,
         imageUnderstanding,
         voiceGeneration,
+        voiceTranscription,
         toolPromptPreferences,
         taskModeEnabled: true,
         mcpServers,
@@ -442,6 +444,7 @@ describe('persistent store lifecycle guards', () => {
         imageGeneration,
         imageUnderstanding,
         voiceGeneration,
+        voiceTranscription,
         toolPromptPreferences,
         taskModeEnabled: true,
         mcpServers,
@@ -461,6 +464,7 @@ describe('persistent store lifecycle guards', () => {
     const imageGeneration = {};
     const imageUnderstanding = {};
     const voiceGeneration = {};
+    const voiceTranscription = {};
     const toolPromptPreferences = {};
     const mcpServers: unknown[] = [];
     const companionHost = {};
@@ -479,6 +483,7 @@ describe('persistent store lifecycle guards', () => {
         imageGeneration,
         imageUnderstanding,
         voiceGeneration,
+        voiceTranscription,
         toolPromptPreferences,
         taskModeEnabled: true,
         mcpServers,
@@ -498,6 +503,7 @@ describe('persistent store lifecycle guards', () => {
         imageGeneration,
         imageUnderstanding,
         voiceGeneration,
+        voiceTranscription,
         toolPromptPreferences,
         taskModeEnabled: true,
         mcpServers,
@@ -517,6 +523,7 @@ describe('persistent store lifecycle guards', () => {
     const imageGeneration = {};
     const imageUnderstanding = {};
     const voiceGeneration = {};
+    const voiceTranscription = {};
     const toolPromptPreferences = {};
     const mcpServers: unknown[] = [];
     const companionHost = {};
@@ -535,6 +542,7 @@ describe('persistent store lifecycle guards', () => {
         imageGeneration,
         imageUnderstanding,
         voiceGeneration,
+        voiceTranscription,
         toolPromptPreferences,
         taskModeEnabled: true,
         mcpServers,
@@ -554,6 +562,7 @@ describe('persistent store lifecycle guards', () => {
         imageGeneration,
         imageUnderstanding,
         voiceGeneration,
+        voiceTranscription,
         toolPromptPreferences,
         taskModeEnabled: true,
         mcpServers,
@@ -573,6 +582,7 @@ describe('persistent store lifecycle guards', () => {
     const memoryVectorRetrieval = {};
     const imageUnderstanding = {};
     const voiceGeneration = {};
+    const voiceTranscription = {};
     const toolPromptPreferences = {};
     const mcpServers: unknown[] = [];
     const companionHost = {};
@@ -591,6 +601,7 @@ describe('persistent store lifecycle guards', () => {
         imageGeneration: { enabled: true, providerId: 'image-provider' },
         imageUnderstanding,
         voiceGeneration,
+        voiceTranscription,
         toolPromptPreferences,
         taskModeEnabled: true,
         mcpServers,
@@ -610,6 +621,7 @@ describe('persistent store lifecycle guards', () => {
         imageGeneration: { enabled: false, providerId: '' },
         imageUnderstanding,
         voiceGeneration,
+        voiceTranscription,
         toolPromptPreferences,
         taskModeEnabled: true,
         mcpServers,
@@ -629,6 +641,7 @@ describe('persistent store lifecycle guards', () => {
     const memoryVectorRetrieval = {};
     const imageGeneration = {};
     const voiceGeneration = {};
+    const voiceTranscription = {};
     const toolPromptPreferences = {};
     const mcpServers: unknown[] = [];
     const companionHost = {};
@@ -647,6 +660,7 @@ describe('persistent store lifecycle guards', () => {
         imageGeneration,
         imageUnderstanding: { enabled: true, providerId: 'vision-provider' },
         voiceGeneration,
+        voiceTranscription,
         toolPromptPreferences,
         taskModeEnabled: true,
         mcpServers,
@@ -666,6 +680,7 @@ describe('persistent store lifecycle guards', () => {
         imageGeneration,
         imageUnderstanding: { enabled: false, providerId: '' },
         voiceGeneration,
+        voiceTranscription,
         toolPromptPreferences,
         taskModeEnabled: true,
         mcpServers,
@@ -703,6 +718,7 @@ describe('persistent store lifecycle guards', () => {
         imageGeneration,
         imageUnderstanding,
         voiceGeneration: { enabled: true, providerId: 'voice-provider' },
+        voiceTranscription: {},
         toolPromptPreferences,
         taskModeEnabled: true,
         mcpServers,
@@ -722,6 +738,110 @@ describe('persistent store lifecycle guards', () => {
         imageGeneration,
         imageUnderstanding,
         voiceGeneration: { enabled: false, providerId: '' },
+        voiceTranscription: {},
+        toolPromptPreferences,
+        taskModeEnabled: true,
+        mcpServers,
+        mcpToolTimeoutSeconds: 30,
+        companionHost,
+        companionConnections,
+        triggerRules
+      }
+    )).toBe(true);
+  });
+
+  it('writes runtime after voice transcription settings change', () => {
+    const providers: unknown[] = [];
+    const webdav = {};
+    const search = {};
+    const conversationSummaryModel = {};
+    const memoryVectorRetrieval = {};
+    const imageGeneration = {};
+    const imageUnderstanding = {};
+    const voiceGeneration = {};
+    const voiceTranscription = { enabled: true, model: 'whisper-1' };
+    const toolPromptPreferences = {};
+    const mcpServers: unknown[] = [];
+    const companionHost = {};
+    const companionConnections: unknown[] = [];
+    const triggerRules: unknown[] = [];
+
+    expect(shouldPersistRuntimeState(
+      {
+        hydrated: true,
+        activeProviderId: 'polaris-public',
+        providers,
+        webdav,
+        search,
+        conversationSummaryModel,
+        memoryVectorRetrieval,
+        imageGeneration,
+        imageUnderstanding,
+        voiceGeneration,
+        voiceTranscription,
+        toolPromptPreferences,
+        taskModeEnabled: true,
+        mcpServers,
+        mcpToolTimeoutSeconds: 30,
+        companionHost,
+        companionConnections,
+        triggerRules
+      },
+      {
+        hydrated: true,
+        activeProviderId: 'polaris-public',
+        providers,
+        webdav,
+        search,
+        conversationSummaryModel,
+        memoryVectorRetrieval,
+        imageGeneration,
+        imageUnderstanding,
+        voiceGeneration,
+        voiceTranscription,
+        toolPromptPreferences,
+        taskModeEnabled: true,
+        mcpServers,
+        mcpToolTimeoutSeconds: 30,
+        companionHost,
+        companionConnections,
+        triggerRules
+      }
+    )).toBe(false);
+
+    expect(shouldPersistRuntimeState(
+      {
+        hydrated: true,
+        activeProviderId: 'polaris-public',
+        providers,
+        webdav,
+        search,
+        conversationSummaryModel,
+        memoryVectorRetrieval,
+        imageGeneration,
+        imageUnderstanding,
+        voiceGeneration,
+        voiceTranscription: { enabled: true, model: 'whisper-1' },
+        toolPromptPreferences,
+        taskModeEnabled: true,
+        mcpServers,
+        mcpToolTimeoutSeconds: 30,
+        companionHost,
+        companionConnections,
+        triggerRules
+      },
+      {
+        hydrated: true,
+        activeProviderId: 'polaris-public',
+        providers,
+        webdav,
+        search,
+        conversationSummaryModel,
+        memoryVectorRetrieval,
+        imageGeneration,
+        imageUnderstanding,
+        voiceGeneration,
+        voiceTranscription: { enabled: false },
         toolPromptPreferences,
         taskModeEnabled: true,
         mcpServers,

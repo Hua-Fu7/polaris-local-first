@@ -5,7 +5,7 @@ import type { DesktopLocalCommandResult, DesktopLocalCommandSession } from '../.
 import type { Conversation, Persona, ProjectFile, RoomProject, WorkspaceReferenceDoc } from '../../../types/domain';
 import { CollectionEmptyStateWhisper } from '../grid/CollectionEmptyStateWhisper';
 import { CollectionShelfLead } from '../grid/CollectionShelfLead';
-import { CollectionFloatingCreateAction } from '../grid/CollectionFloatingCreateAction';
+import { COLLECTION_CREATE_EVENT } from '../../../app/shell/collectionCreateCommands';
 import { useI18n } from '../../../i18n';
 import { RoomProjectFileFullscreen } from './RoomProjectFileFullscreen';
 import { RoomProjectCard } from './RoomProjectCard';
@@ -209,6 +209,15 @@ export function ProjectCollectionShelf({
     [visibleProjects]
   );
   useEffect(() => {
+    const handleCreateCommand = (event: Event) => {
+      const detail = (event as CustomEvent<{ command?: string }>).detail;
+      if (detail?.command === 'project') onCreateProject();
+    };
+    window.addEventListener(COLLECTION_CREATE_EVENT, handleCreateCommand);
+    return () => window.removeEventListener(COLLECTION_CREATE_EVENT, handleCreateCommand);
+  }, [onCreateProject]);
+
+  useEffect(() => {
     const scrollNode = scrollRef.current;
     if (!scrollNode) return;
 
@@ -327,14 +336,6 @@ export function ProjectCollectionShelf({
           />
         )}
       </div>
-
-      <CollectionFloatingCreateAction
-        label={isAggregateScope
-          ? t('collection.project.createDisabledAggregate')
-          : t('collection.project.createWorkspace')}
-        disabled={isAggregateScope}
-        onPress={onCreateProject}
-      />
 
       {renderProjectFullscreen && activeProject ? (
         <RoomProjectFullscreen

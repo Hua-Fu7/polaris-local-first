@@ -70,6 +70,7 @@ export function TaskRuntimeDock({
   justCompleted,
   showJumpToLatest,
   showJumpToTop,
+  jumpControlsFaded = false,
   onToggleCollapsed,
   onJumpToLatest,
   onJumpToTop
@@ -82,11 +83,16 @@ export function TaskRuntimeDock({
   justCompleted: boolean;
   showJumpToLatest: boolean;
   showJumpToTop: boolean;
+  /** 静置太久时把两个跳转箭头淡掉（任务球本身不动）。 */
+  jumpControlsFaded?: boolean;
   onToggleCollapsed: () => void;
   onJumpToLatest: () => void;
   onJumpToTop: () => void;
 }) {
   const { t } = useI18n();
+  const jumpButtonClassName = jumpControlsFaded
+    ? 'chat-floating-jump-btn idle-faded'
+    : 'chat-floating-jump-btn';
   const buttonIcon = task?.status === 'completed' && justCompleted ? 'check' : 'task';
   const buttonStatus = task?.status === 'completed' && !justCompleted
     ? 'armed'
@@ -134,8 +140,8 @@ export function TaskRuntimeDock({
               </span>
             </span>
           </button>
-          {showJumpToTop ? <JumpToTop onClick={onJumpToTop} className="chat-floating-jump-btn" /> : null}
-          {showJumpToLatest ? <JumpToLatest onClick={onJumpToLatest} className="chat-floating-jump-btn" /> : null}
+          {showJumpToTop ? <JumpToTop onClick={onJumpToTop} className={jumpButtonClassName} /> : null}
+          {showJumpToLatest ? <JumpToLatest onClick={onJumpToLatest} className={jumpButtonClassName} /> : null}
         </div>
       </div>
     </>

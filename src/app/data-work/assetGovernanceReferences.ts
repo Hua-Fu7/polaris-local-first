@@ -5,6 +5,7 @@ import { useSpaceStore } from '../../stores/spaceStore';
 import type { AssetGovernanceReferences } from '../../engines/assetGovernance';
 import { readStableCompleteChatConversationsForDerivedDataWork } from './derivedDataWork';
 import { loadWorkspaceReferenceDocsContent } from '../../stores/workspaceReferenceDocContentPersistence';
+import { listStickerAttachments } from '../../engines/stickers/stickerLibrary';
 
 export async function buildStableAssetGovernanceReferences(): Promise<AssetGovernanceReferences> {
   const conversations = await readStableCompleteChatConversationsForDerivedDataWork('asset_audit');
@@ -23,7 +24,7 @@ export async function buildStableAssetGovernanceReferences(): Promise<AssetGover
     theme: spaceState.theme,
     collaboratorThemes: spaceState.collaboratorThemes,
     customization: spaceState.customization,
-    pendingAttachments: spaceState.pendingAttachments
+    pendingAttachments: [...spaceState.pendingAttachments, ...listStickerAttachments()]
   };
 }
 
@@ -43,6 +44,6 @@ export async function buildLiveAssetGovernanceReferences(): Promise<AssetGoverna
     theme: spaceState.theme,
     collaboratorThemes: spaceState.collaboratorThemes,
     customization: spaceState.customization,
-    pendingAttachments: spaceState.pendingAttachments
+    pendingAttachments: [...spaceState.pendingAttachments, ...listStickerAttachments()]
   };
 }

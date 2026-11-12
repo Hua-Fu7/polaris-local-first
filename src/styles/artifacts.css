@@ -1,0 +1,191 @@
+/* 产物行：`</>` + 文件名 + `code · HTML` + 打开箭头。
+   聊天里（小机写完发出来）和收藏区「作品」都用这一行，不再套卡片。 */
+
+.artifact-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 6px 8px 4px;
+  border-radius: 12px;
+  color: var(--text);
+  text-align: left;
+  transition: background 140ms ease;
+}
+
+/* 只在真·鼠标悬停时给底色；手机上点一下会留下"粘住的 hover"，看着像没清掉的痕迹 */
+@media (hover: hover) {
+  .artifact-row:hover {
+    background: color-mix(in srgb, var(--text) 4%, transparent);
+  }
+}
+
+/* 选中态也不铺底色：点开卡片再回来，那一行不该一直亮着 */
+.artifact-row.is-active {
+  background: transparent;
+}
+
+.artifact-row.is-spotlight {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.artifact-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.artifact-row-glyph {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-soft);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.artifact-row-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.artifact-row-name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.artifact-row-kind {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.artifact-row-dot {
+  opacity: 0.5;
+}
+
+.artifact-row-language {
+  letter-spacing: 0.04em;
+}
+
+.artifact-row-trailing {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.artifact-row-trailing button {
+  border: 0;
+  background: none;
+  padding: 4px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: pointer;
+}
+
+.artifact-row-trailing button:hover,
+.artifact-row-trailing button.active {
+  opacity: 1;
+  color: var(--text);
+}
+
+.artifact-row-open {
+  flex: 0 0 auto;
+  border: 0;
+  background: none;
+  padding: 4px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.artifact-row-open:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+/* 聊天里：产物行就是消息的一部分，左右不要额外留白 */
+.message-artifact-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0 2px;
+}
+
+.message-artifact-row .artifact-row {
+  padding-left: 0;
+}
+
+/* 收藏区「作品」：一行一个，去掉网格和卡片外壳 */
+.code-artifact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 6px;
+}
+
+/* 抽屉里给以后留的一格空：跟一个列表行等高，看起来是「还能再放东西」 */
+.collaborator-scope-drawer-gap {
+  height: 44px;
+  margin: 4px 0 2px;
+  border-radius: 12px;
+}
+
+.code-artifact-list-lead {
+  margin: 10px 2px 4px;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+/* 对齐：所有行的图标、文字、箭头都在同一列；小标题跟文字左边对齐。 */
+.artifact-row {
+  padding: 7px 4px 7px 2px;
+}
+
+.artifact-row-trailing {
+  flex: 0 0 auto;
+  width: 56px;
+  justify-content: flex-end;
+}
+
+.artifact-row-open {
+  flex: 0 0 auto;
+  width: 32px;
+  display: inline-grid;
+  place-items: center;
+}
+
+.code-artifact-list-lead {
+  /* 跟作品列表同一套左右缩进，标题正好落在文字那一列 */
+  padding-left: 42px;
+  padding-right: 4px;
+  margin: 16px 0 6px;
+}
+
+/* 触摸设备上点完不要留焦点环 */
+.artifact-row-main:focus:not(:focus-visible),
+.artifact-row-open:focus:not(:focus-visible) {
+  outline: none;
+}

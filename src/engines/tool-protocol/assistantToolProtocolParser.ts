@@ -8,6 +8,23 @@ import { extractAssistantToolFenceBlocks } from './assistantToolProtocolFence';
 import { parseToolPayload } from './assistantToolProtocolPayload';
 import type { AssistantToolActionParseContext } from './assistantToolProtocolActionContext';
 
+/**
+ * 表情必须先说话再发。
+ *
+ * 模型偶尔会整条回复只丢一个 sendImageAttachment(sticker:…) 的工具块，
+ * 正文一个字没有。这种调用直接判掉：对方只会收到一个没头没尾的表情，
+ * 而且还要为它多跑一轮请求。
+ */
+export function isStickerActionWithoutText(
+  action: AssistantToolAction | null,
+  spokenText: string | undefined
+): boolean {
+  if (!action || action.kind !== 'sendImageAttachment') return false;
+  const target = String((action as { target?: string }).target ?? '').trim().toLowerCase();
+  if (!target.startsWith('sticker:')) return false;
+  return !(spokenText ?? '').trim();
+}
+
 function summarizeRawToolBlock(rawJson: string) {
   const compact = rawJson
     .replace(/\s+/g, ' ')
@@ -55,6 +72,10 @@ export function extractAssistantToolActions(
       }
       for (const item of payload) {
         const result = parseAssistantToolAction(item, contentHint, themeToolMode, parseContext);
+        if (isStickerActionWithoutText(result.action, displayContent)) {
+          issues.push('这条回复正文是空的，表情没有发送：先说话，再发表情。');
+          continue;
+        }
         if (result.action) {
           actions.push(result.action);
         } else if (result.issue) {
@@ -245,6 +266,10 @@ export function extractAssistantNativeToolActions(
           themeToolMode,
           parseContext
         );
+      if (isStickerActionWithoutText(result.action, contentHint)) {
+        issues.push('这条回复正文是空的，表情没有发送：先说话，再发表情。');
+        continue;
+      }
       if (result.action) {
         actions.push(result.action);
       } else if (

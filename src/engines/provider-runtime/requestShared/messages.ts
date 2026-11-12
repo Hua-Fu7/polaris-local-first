@@ -42,7 +42,7 @@ export function buildOrderedMessages(
       ...nonSystemMessages,
       ...(
         policy.omitVolatileSystemMessages
-          ? buildSystemMessageGroup(volatileSystemMessages.filter(shouldKeepDeepSeekVolatileSystemMessage), policy)
+          ? buildSystemMessageGroup(volatileSystemMessages.filter(shouldKeepVolatileSystemMessageUnderOmission), policy)
           : buildSystemMessageGroup(volatileSystemMessages, policy)
       )
     ];
@@ -63,8 +63,10 @@ function isStableSystemMessage(message: OrderedContextMessage) {
   );
 }
 
-function shouldKeepDeepSeekVolatileSystemMessage(message: OrderedContextMessage) {
-  return message.contextSegmentKind === 'semantic_recall';
+function shouldKeepVolatileSystemMessageUnderOmission(message: OrderedContextMessage) {
+  // 语义召回是喂给模型的检索事实；带送达保证的消息（如通话接通/结束记录）是
+  // 模型必须知道的状态事实——两者都不属于"可安全丢弃的缓存噪声"。
+  return message.contextSegmentKind === 'semantic_recall' || message.requestDelivery === 'always';
 }
 
 function buildSystemMessageGroup(

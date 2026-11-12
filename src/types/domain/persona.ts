@@ -23,6 +23,8 @@ export interface PersonaMemorySettings {
   excludeFromGlobal?: boolean;
   excludedGlobalIds: string[];
   personalMemories: string[];
+  /** 常驻记忆：每轮都带上（用户在记忆页勾的那几条）。没勾就按默认规则自动挑。 */
+  coreMemories?: string[];
   referenceDocs: PersonaMemoryReferenceDoc[];
 }
 
@@ -102,6 +104,19 @@ export interface MemoryVectorRetrievalSettings {
   lastUpdatedAt?: number;
 }
 
+/**
+ * Ombre-Brain 接入设置。
+ *
+ * 密码**不在这里**——它走安全存储，这里只放"连到哪、开不开、等多久"。
+ */
+export interface ObBrainSettings {
+  enabled: boolean;
+  baseUrl: string;
+  /** 单次请求超时（毫秒）。召回是附加项，宁可放弃也不要拖住回复。 */
+  timeoutMs: number;
+  lastUpdatedAt?: number;
+}
+
 export type ImageGenerationSize =
   | '1024x1024'
   | '1024x1536'
@@ -171,6 +186,35 @@ export interface VoiceGenerationSettings {
   format?: VoiceGenerationFormat;
   lastUpdatedAt?: number;
 }
+
+/**
+ * Speech-to-text config for voice call mode. Kept separate from
+ * VoiceGenerationSettings because the two can live on different hosts, even
+ * though one base URL often serves both.
+ */
+export interface VoiceTranscriptionSettings {
+  enabled: boolean;
+  providerType?: VoiceTranscriptionProviderType;
+  baseUrl?: string;
+  path?: string;
+  apiKey?: string;
+  model?: string;
+  /** Optional BCP-47 hint, e.g. 'zh' or 'en'. Empty means auto-detect. */
+  language?: string;
+  /**
+   * When true (the default), blank baseUrl/apiKey fall back to the playback
+   * config, so a single provider only has to be entered once.
+   */
+  reuseVoiceBaseUrl?: boolean;
+  lastUpdatedAt?: number;
+}
+
+/**
+ * Speech-to-text vendors. Each one exposes the same job (audio in, text out)
+ * behind a different endpoint, auth header and multipart field name, so the
+ * request shape lives in a per-provider profile rather than in the settings.
+ */
+export type VoiceTranscriptionProviderType = 'openai-compatible' | 'minimax' | 'elevenlabs';
 
 export type PersonaMemoryReferenceDocSource =
   | 'user'

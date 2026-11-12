@@ -34,6 +34,11 @@ export function buildChatPresentation(args: {
   persona: Persona | null;
   activeCollaboratorId: string | null;
   showChatAvatars: boolean;
+  showCollaboratorName?: boolean;
+  /** 缺省开，和 DEFAULT_APP_CUSTOMIZATION 保持一致。 */
+  showMessageClock?: boolean;
+  showModelName?: boolean;
+  showTokenUsage?: boolean;
   personas: Persona[];
   startupReady: boolean;
   hasUnsupportedPendingImages: boolean;
@@ -47,6 +52,10 @@ export function buildChatPresentation(args: {
     persona,
     activeCollaboratorId,
     showChatAvatars,
+    showCollaboratorName = true,
+    showMessageClock = true,
+    showModelName = true,
+    showTokenUsage = true,
     personas,
     startupReady,
     hasUnsupportedPendingImages,
@@ -65,6 +74,10 @@ export function buildChatPresentation(args: {
     activeConversationId,
     activeCollaboratorId,
     showChatAvatars,
+    showCollaboratorName,
+    showMessageClock,
+    showModelName,
+    showTokenUsage,
     personas,
     startupReady,
     interactionLocked: !startupReady || activeConversationBodyStatus?.state === 'failed' || activeConversationBodyStatus?.state === 'missing',

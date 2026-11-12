@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { runSelectionAction } from '../haptics';
 import { useCollectionWorldController } from '../../app/collection/useCollectionWorldController';
 import { CollaboratorScopeStrip } from '../collection/grid/CollaboratorScopeStrip';
-import { CollectionFloatingCreateAction } from '../collection/grid/CollectionFloatingCreateAction';
-import { CollectionShelfTabs } from '../collection/grid/CollectionShelfTabs';
+import { COLLECTION_CREATE_EVENT } from '../../app/shell/collectionCreateCommands';
 import { buildVisibleCollectionShelfNavItems } from '../collection/grid/collectionShelfNav';
 import { DialogueCollectionShelf } from '../collection/grid/DialogueCollectionShelf';
 import { CollaboratorInfoShelf } from '../collection/info/CollaboratorInfoShelf';
-import { ImageCollectionShelf } from '../collection/images/ImageCollectionShelf';
+import { XinchaoPanel } from '../xinchao/XinchaoPanel';
+import { CalendarWorld } from '../calendar/CalendarWorld';
+import { HeatmapWorld } from '../heatmap/HeatmapWorld';
 import { CodeProjectCollectionShelfPages } from './collection/CodeProjectCollectionShelfPages';
 import { useI18n } from '../../i18n';
 
@@ -24,6 +25,7 @@ type CollectionWorldProps = {
   onCreateCustomCollaborator: () => void;
   onOpenProviderSettings: () => void;
   onOpenDesktopLocalSettings: () => void;
+  onCollectionDrawerNavigate: () => void;
 };
 
 export function CollectionWorld({
@@ -38,7 +40,8 @@ export function CollectionWorld({
   onOpenCollaboratorBuilderForCreate,
   onCreateCustomCollaborator,
   onOpenProviderSettings,
-  onOpenDesktopLocalSettings
+  onOpenDesktopLocalSettings,
+  onCollectionDrawerNavigate
 }: CollectionWorldProps) {
   const { t } = useI18n();
   const controller = useCollectionWorldController({
@@ -65,11 +68,11 @@ export function CollectionWorld({
           image: true
         },
         t
-      ).map((item) => (
-        item.shelf === 'info'
-          ? { ...item, label: collaboratorInfoShelfLabel }
-          : item
-      )),
+      ).map((item) => {
+        if (item.shelf === 'info') return { ...item, label: collaboratorInfoShelfLabel };
+        if (item.shelf === 'image') return { ...item, label: '心潮' };
+        return item;
+      }),
     [collaboratorInfoShelfLabel, t]
   );
   const visibleShelfSet = useMemo(
@@ -77,6 +80,8 @@ export function CollectionWorld({
     [visibleShelfItems]
   );
   const [floatingActionHost, setFloatingActionHost] = useState<HTMLDivElement | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [heatmapOpen, setHeatmapOpen] = useState(false);
   const activeShelf = controller.collectionShelf;
   const setCollectionShelf = controller.setCollectionShelf;
   useEffect(() => {
@@ -103,13 +108,60 @@ export function CollectionWorld({
         personas={controller.personas}
         conversationCounts={controller.collaboratorConversationCounts}
         collaboratorScopeId={controller.collaboratorScopeId}
-        onSelectCollaboratorScope={controller.onSelectCollaboratorScope}
-        onOpenGroupWorld={controller.onOpenGroupWorld}
-        onToggleCollaboratorPinned={controller.onCollaboratorPinToggle}
+        collectionShelf={controller.collectionShelf}
+        conversations={controller.filteredConversations}
+        activeConversationId={controller.activeConversationId}
+        editingConversationId={controller.editingConversationId}
+        conversationTitleDraft={controller.conversationTitleDraft}
+        onConversationTitleDraftChange={controller.onConversationTitleDraftChange}
+        onStartConversationRename={controller.onStartConversationRename}
+        onCommitConversationRename={controller.onCommitConversationRename}
+        onCancelConversationRename={controller.onCancelConversationRename}
+        onConversationPinToggle={controller.onConversationPinToggle}
+        onConversationDelete={controller.onConversationDelete}
+        onSelectShelf={(shelf) => {
+          onCollectionDrawerNavigate();
+          setCalendarOpen(false);
+          setHeatmapOpen(false);
+          controller.setCollectionShelf(shelf);
+        }}
+        onOpenConversation={(conversationId) => {
+          onCollectionDrawerNavigate();
+          controller.onOpenConversation(conversationId);
+        }}
+        onOpenGroupWorld={() => {
+          onCollectionDrawerNavigate();
+          controller.onOpenGroupWorld();
+        }}
+        onOpenCalendar={() => {
+          onCollectionDrawerNavigate();
+          setHeatmapOpen(false);
+          setCalendarOpen(true);
+        }}
+        onOpenHeatmap={() => {
+          onCollectionDrawerNavigate();
+          setCalendarOpen(false);
+          setHeatmapOpen(true);
+        }}
+
         onClose={() => onCollaboratorSwitchOpenChange(false)}
-        onCreateFromBuilder={onOpenCollaboratorBuilderForCreate}
-        onCreateCustomCollaborator={onCreateCustomCollaborator}
-        onOpenSettings={onOpenSettings}
+        onCreateFromBuilder={() => {
+          onCollectionDrawerNavigate();
+          onOpenCollaboratorBuilderForCreate();
+        }}
+        onCreateCustomCollaborator={() => {
+          onCollectionDrawerNavigate();
+          onCreateCustomCollaborator();
+        }}
+        onOpenSettings={() => {
+          onOpenSettings();
+        }}
+        onOpenCollaboratorPage={() => {
+          onCollectionDrawerNavigate();
+          onCollaboratorSwitchOpenChange(false);
+          setCalendarOpen(false);
+          controller.setCollectionShelf('info');
+        }}
       />
 
       <div className={`surface-motion-local-stage collection-shelf-stage ${searchOpen ? 'collection-shelf-stage--controls-open' : ''}`}>
@@ -181,9 +233,10 @@ export function CollectionWorld({
                   editing={searchOpen}
                   onUpdateCollaborator={controller.onUpdateCurrentCollaborator}
                   onSelectCollaborator={controller.onSelectCollaboratorScope}
-                  onToggleCollaboratorPinned={controller.onCollaboratorPinToggle}
+          
                   onDeleteCollaborator={onDeleteCollaborator}
                   onSelectCollaboratorAvatar={controller.onSelectCurrentCollaboratorAvatar}
+                  onToggleCollaboratorPinned={controller.onCollaboratorPinToggle}
                   onCreateFromBuilder={onOpenCollaboratorBuilderForCreate}
                   onCreateCustomCollaborator={onCreateCustomCollaborator}
                   onOpenProviderSettings={onOpenProviderSettings}
@@ -242,15 +295,13 @@ export function CollectionWorld({
 
             {visibleShelfSet.has('image') && activeShelf === 'image' ? (
             <div
-              className="collection-shelf-page collection-shelf-page--image collection-shelf-page--active"
-              data-shelf-page="image"
+              className="collection-shelf-page collection-shelf-page--xinchao collection-shelf-page--active"
+              data-shelf-page="xinchao"
             >
-              <div className="collection-shelf-page-body">
-                <ImageCollectionShelf
-                  cardsExpanded={searchOpen}
-                  searchTerm={controller.searchTerm}
-                  isAggregateScope={controller.isAggregateScope}
-                  floatingActionHost={floatingActionHost}
+              <div className="collection-shelf-page-body collection-shelf-page-body--xinchao">
+                <XinchaoPanel
+                  collaboratorId={controller.currentCollaboratorId}
+                  collaboratorName={controller.currentCollaborator?.name ?? ''}
                 />
               </div>
             </div>
@@ -258,18 +309,19 @@ export function CollectionWorld({
           </div>
         )}
         <div ref={setFloatingActionHost} className="collection-floating-action-host" />
-        {controller.ready && activeShelf === 'dialogue' ? (
-          <CollectionFloatingCreateAction
-            label={t('collection.world.newConversation')}
-            onPress={controller.onCreateConversation}
-          />
-        ) : null}
-        <CollectionShelfTabs
-          collectionShelf={controller.collectionShelf}
-          navItems={visibleShelfItems}
-          onSetCollectionShelf={controller.setCollectionShelf}
-        />
       </div>
+      <CalendarWorld
+        open={calendarOpen}
+        collaboratorId={controller.currentCollaboratorId ?? 'default'}
+        collaboratorName={controller.currentCollaborator?.name ?? ''}
+        onClose={() => setCalendarOpen(false)}
+      />
+      <HeatmapWorld
+        open={heatmapOpen}
+        collaboratorName={controller.currentCollaborator?.name ?? ''}
+        conversations={controller.scopedConversations}
+        onClose={() => setHeatmapOpen(false)}
+      />
     </section>
   );
 }

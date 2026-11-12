@@ -25,6 +25,8 @@ export function useSpaceThemeSessionBindings() {
   const deleteCollaboratorThemeSession = useSpaceStore((state) => state.deleteCollaboratorThemeSession);
   const commitSkinSnapshot = useSpaceStore((state) => state.commitSkinSnapshot);
   const restoreSkinSnapshot = useSpaceStore((state) => state.restoreSkinSnapshot);
+  const deleteSkinSnapshot = useSpaceStore((state) => state.deleteSkinSnapshot);
+  const clearSkinHistory = useSpaceStore((state) => state.clearSkinHistory);
   const rollbackLastSkin = useSpaceStore((state) => state.rollbackLastSkin);
 
   return useMemo(() => ({
@@ -51,6 +53,8 @@ export function useSpaceThemeSessionBindings() {
     deleteCollaboratorThemeSession,
     commitSkinSnapshot,
     restoreSkinSnapshot,
+    deleteSkinSnapshot,
+    clearSkinHistory,
     rollbackLastSkin
   }), [
     activeThemePreview,
@@ -76,8 +80,11 @@ export function useSpaceThemeSessionBindings() {
     deleteCollaboratorThemeSession,
     commitSkinSnapshot,
     restoreSkinSnapshot,
+    deleteSkinSnapshot,
+    clearSkinHistory,
     rollbackLastSkin
   ]);
 }
 
 export type SpaceThemeSessionBindings = ReturnType<typeof useSpaceThemeSessionBindings>;
+

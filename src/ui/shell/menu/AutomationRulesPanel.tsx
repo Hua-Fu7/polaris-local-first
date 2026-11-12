@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import { MIN_IDLE_MINUTES } from '../../../engines/triggers';
 import type { I18nTranslator } from '../../../i18n/translator';
 import { useI18n } from '../../../i18n/useI18n';
 import type { Conversation, Persona, PolarisTriggerRule, PolarisTriggerSchedule } from '../../../types/domain';
 import { Icon } from '../../Icon';
 
-type TriggerFormMode = 'daily' | 'interval';
+type TriggerFormMode = 'daily' | 'interval' | 'idle';
 type ConversationSelectMode = PolarisTriggerRule['target']['conversationMode'];
 
 export type AutomationRulesPanelProps = {
@@ -42,10 +43,15 @@ function formatDateTime(value: number | null, i18n: I18nTranslator) {
   }).format(new Date(value));
 }
 
+/** 空闲阈值统一用"小时"呈现，用户填的就是小时数。 */
+function formatIdleHours(idleMinutes: number) {
+  return Math.round((idleMinutes / 60) * 10) / 10;
+}
+
 function formatSchedule(schedule: PolarisTriggerSchedule, t: I18nTranslator['t']) {
-  return schedule.kind === 'daily'
-    ? t('settings.automation.scheduleDaily', { time: schedule.time })
-    : t('settings.automation.scheduleInterval', { minutes: schedule.everyMinutes });
+  if (schedule.kind === 'daily') return t('settings.automation.scheduleDaily', { time: schedule.time });
+  if (schedule.kind === 'interval') return t('settings.automation.scheduleInterval', { minutes: schedule.everyMinutes });
+  return t('settings.automation.scheduleIdle', { hours: formatIdleHours(schedule.idleMinutes) });
 }
 
 function resolvePersonaName(personas: Persona[], collaboratorId: string, t: I18nTranslator['t']) {
@@ -74,7 +80,12 @@ function isSelectedConversationTarget(
   return conversationMode === 'fixed' && selectedConversationId === optionId;
 }
 
-function buildSchedule(mode: TriggerFormMode, dailyTime: string, intervalMinutes: string) {
+function buildSchedule(
+  mode: TriggerFormMode,
+  dailyTime: string,
+  intervalMinutes: string,
+  idleHours: string
+) {
   if (mode === 'daily') {
     const trimmedTime = dailyTime.trim();
     if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(trimmedTime)) return null;
@@ -85,11 +96,22 @@ function buildSchedule(mode: TriggerFormMode, dailyTime: string, intervalMinutes
     };
   }
 
-  const parsedMinutes = Number(intervalMinutes);
-  if (!Number.isFinite(parsedMinutes) || parsedMinutes < 1) return null;
+  if (mode === 'interval') {
+    const parsedMinutes = Number(intervalMinutes);
+    if (!Number.isFinite(parsedMinutes) || parsedMinutes < 1) return null;
+    return {
+      kind: 'interval' as const,
+      everyMinutes: Math.floor(parsedMinutes)
+    };
+  }
+
+  const parsedHours = Number(idleHours);
+  if (!Number.isFinite(parsedHours) || parsedHours <= 0) return null;
+  const idleMinutes = Math.round(parsedHours * 60);
+  if (idleMinutes < MIN_IDLE_MINUTES) return null;
   return {
-    kind: 'interval' as const,
-    everyMinutes: Math.floor(parsedMinutes)
+    kind: 'idle' as const,
+    idleMinutes
   };
 }
 
@@ -122,9 +144,10 @@ export function AutomationRulesPanel({
     ? personas.filter((persona) => persona.id === lockedCollaboratorId)
     : personas;
   const visibleRules = useMemo(
-    () => lockedCollaboratorId
+    () => (lockedCollaboratorId
       ? triggerRules.filter((rule) => rule.target.collaboratorId === lockedCollaboratorId)
-      : triggerRules,
+      : triggerRules
+    ).filter((rule) => rule.mode !== 'proactive-settings' && rule.mode !== 'proactive-plan'),
     [lockedCollaboratorId, triggerRules]
   );
   const firstPersonaId = lockedCollaboratorId ?? visiblePersonas[0]?.id ?? '';
@@ -135,6 +158,7 @@ export function AutomationRulesPanel({
   const [mode, setMode] = useState<TriggerFormMode>('daily');
   const [dailyTime, setDailyTime] = useState('22:30');
   const [intervalMinutes, setIntervalMinutes] = useState('180');
+  const [idleHours, setIdleHours] = useState('6');
   const [conversationMode, setConversationMode] = useState<ConversationSelectMode>('follow-latest');
   const [conversationId, setConversationId] = useState('');
   const [prompt, setPrompt] = useState('');
@@ -156,7 +180,6 @@ export function AutomationRulesPanel({
   const targetConversationOptions = useMemo(
     () => conversations.filter((conversation) =>
       conversation.collaboratorId === (lockedCollaboratorId ?? collaboratorId)
-      && (conversation.activeProjectId ?? null) === null
     ),
     [collaboratorId, conversations, lockedCollaboratorId]
   );
@@ -184,6 +207,7 @@ export function AutomationRulesPanel({
     setMode('daily');
     setDailyTime('22:30');
     setIntervalMinutes('180');
+    setIdleHours('6');
     setConversationMode('follow-latest');
     setConversationId('');
     setPrompt('');
@@ -205,10 +229,17 @@ export function AutomationRulesPanel({
       setMode('daily');
       setDailyTime(rule.schedule.time);
       setIntervalMinutes('180');
-    } else {
+      setIdleHours('6');
+    } else if (rule.schedule.kind === 'interval') {
       setMode('interval');
       setDailyTime('22:30');
       setIntervalMinutes(String(rule.schedule.everyMinutes));
+      setIdleHours('6');
+    } else {
+      setMode('idle');
+      setDailyTime('22:30');
+      setIntervalMinutes('180');
+      setIdleHours(String(formatIdleHours(rule.schedule.idleMinutes)));
     }
     setFormOpen(true);
   };
@@ -219,9 +250,15 @@ export function AutomationRulesPanel({
   };
 
   const submitForm = () => {
-    const schedule = buildSchedule(mode, dailyTime, intervalMinutes);
+    const schedule = buildSchedule(mode, dailyTime, intervalMinutes, idleHours);
     if (!schedule) {
-      window.alert(mode === 'daily' ? t('settings.automation.invalidDaily') : t('settings.automation.invalidInterval'));
+      window.alert(
+        mode === 'daily'
+          ? t('settings.automation.invalidDaily')
+          : mode === 'interval'
+            ? t('settings.automation.invalidInterval')
+            : t('settings.automation.invalidIdle')
+      );
       return;
     }
     const trimmedPrompt = prompt.trim();
@@ -385,6 +422,9 @@ export function AutomationRulesPanel({
                 <button type="button" className={mode === 'interval' ? 'active' : ''} onClick={() => setMode('interval')}>
                   {t('settings.automation.intervalMode')}
                 </button>
+                <button type="button" className={mode === 'idle' ? 'active' : ''} onClick={() => setMode('idle')}>
+                  {t('settings.automation.idleMode')}
+                </button>
               </div>
               {mode === 'daily' ? (
                 <input
@@ -394,7 +434,7 @@ export function AutomationRulesPanel({
                   onChange={(event) => setDailyTime(event.target.value)}
                   placeholder="22:30"
                 />
-              ) : (
+              ) : mode === 'interval' ? (
                 <div className="automation-interval-input-wrap">
                   <input
                     className="ps-input"
@@ -408,7 +448,24 @@ export function AutomationRulesPanel({
                   />
                   <span>{t('settings.automation.minutesUnit')}</span>
                 </div>
+              ) : (
+                <div className="automation-interval-input-wrap">
+                  <input
+                    className="ps-input"
+                    type="number"
+                    min="0.5"
+                    step="0.5"
+                    value={idleHours}
+                    onChange={(event) => setIdleHours(event.target.value)}
+                    placeholder="6"
+                    inputMode="decimal"
+                  />
+                  <span>{t('settings.automation.hoursUnit')}</span>
+                </div>
               )}
+              {mode === 'idle' ? (
+                <small className="automation-field-hint">{t('settings.automation.idleHint')}</small>
+              ) : null}
             </div>
 
             <label className="automation-field ps-field">

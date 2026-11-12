@@ -5,6 +5,25 @@ import {
 } from './assistantToolProtocolParser';
 
 describe('extractAssistantNativeToolActions', () => {
+  it('drops a sticker call that has no spoken text before it', () => {
+    const result = extractAssistantNativeToolActions([{
+      name: 'sendImageAttachment',
+      argumentsText: JSON.stringify({ target: 'sticker:sticker-1' })
+    }], '');
+
+    expect(result.actions).toEqual([]);
+    expect(result.issues.join('\n')).toContain('表情没有发送');
+  });
+
+  it('keeps a sticker call once there is text to attach it to', () => {
+    const result = extractAssistantNativeToolActions([{
+      name: 'sendImageAttachment',
+      argumentsText: JSON.stringify({ target: 'sticker:sticker-1' })
+    }], '好呀，给你一个。');
+
+    expect(result.actions.some((action) => action.kind === 'sendImageAttachment')).toBe(true);
+  });
+
   it('recovers native tool arguments when a provider appends a second JSON object', () => {
     const result = extractAssistantNativeToolActions([{
       name: 'readProjectFile',
@@ -141,6 +160,15 @@ describe('extractAssistantNativeToolActions', () => {
 });
 
 describe('extractAssistantToolActions', () => {
+  it('drops a sticker tool block when the reply body has no words', () => {
+    const result = extractAssistantToolActions(
+      '```polaris-tools {"actions":[{"kind":"sendImageAttachment","target":"sticker:sticker-1"}]}```'
+    );
+
+    expect(result.actions).toEqual([]);
+    expect(result.issues.join('\n')).toContain('表情没有发送');
+  });
+
   it('treats root card shorthand with code as a createCodeCard action', () => {
     const result = extractAssistantToolActions([
       '我先放一张便签。',

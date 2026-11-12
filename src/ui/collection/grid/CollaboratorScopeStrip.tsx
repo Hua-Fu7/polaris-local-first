@@ -1,14 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { normalizePersonaDefaultSummary } from '../../../config/persona/personaBaseCatalog';
-import type { Persona } from '../../../types/domain';
-import { runSelectionAction } from '../../haptics';
+import { isCompanionCollaboratorId } from '../../../engines/companion';
+import { useI18n } from '../../../i18n';
+import { usePersonaStore } from '../../../stores/personaStore';
+import { useSpaceFrontstageBindings } from '../../../stores/spaceStoreFrontstageBindings';
+import type { CollectionShelf, Persona } from '../../../types/domain';
 import { CollaboratorSigil } from '../../collaborator/CollaboratorSigil';
 import { CreateActionSheet } from '../../create/CreateActionSheet';
-import { Icon } from '../../Icon';
-import { WorldMark } from '../../shell/WorldMark';
+import { Icon, type IconName } from '../../Icon';
+import { runSelectionAction } from '../../haptics';
 import { CollaboratorCreatePicker } from '../../worlds/chat/collaborator/CollaboratorCreatePicker';
-import { useI18n } from '../../../i18n';
+import { collectionRelativeDateLabel } from '../collectionUtils';
+import { buildVisibleCollectionShelfNavItems } from './collectionShelfNav';
+
+const SHELF_ICON_BY_ID = {
+  dialogue: 'navDialogue',
+  code: 'archiveBox',
+  project: 'navWorkspace',
+  image: 'heart',
+  info: 'navInfo'
+} satisfies Record<CollectionShelf, IconName>;
+
+const MAX_DRAWER_CONVERSATIONS = 40;
+
+export type CollaboratorScopeConversation = {
+  id: string;
+  title: string;
+  updatedAt: number;
+  pinnedAt: number | null;
+};
 
 type CollaboratorScopeStripProps = {
   open: boolean;
@@ -18,13 +38,27 @@ type CollaboratorScopeStripProps = {
     total: number;
   };
   collaboratorScopeId: string | null;
-  onSelectCollaboratorScope: (collaboratorId: string | null) => void;
+  collectionShelf: CollectionShelf;
+  conversations: CollaboratorScopeConversation[];
+  activeConversationId: string | null;
+  editingConversationId: string | null;
+  conversationTitleDraft: string;
+  onConversationTitleDraftChange: (value: string) => void;
+  onStartConversationRename: (conversationId: string, title: string) => void;
+  onCommitConversationRename: (conversationId: string) => void;
+  onCancelConversationRename: () => void;
+  onConversationPinToggle: (conversationId: string) => void;
+  onConversationDelete: (conversationId: string, title: string) => void;
+  onSelectShelf: (shelf: CollectionShelf) => void;
+  onOpenConversation: (conversationId: string) => void;
   onOpenGroupWorld: () => void;
-  onToggleCollaboratorPinned: (collaboratorId: string) => void;
   onClose: () => void;
   onCreateFromBuilder: () => void;
   onCreateCustomCollaborator: () => void;
+  onOpenCalendar: () => void;
+  onOpenHeatmap: () => void;
   onOpenSettings: () => void;
+  onOpenCollaboratorPage: (collaboratorId: string) => void;
 };
 
 export function CollaboratorScopeStrip({
@@ -32,18 +66,54 @@ export function CollaboratorScopeStrip({
   personas,
   conversationCounts,
   collaboratorScopeId,
-  onSelectCollaboratorScope,
+  collectionShelf,
+  conversations,
+  activeConversationId,
+  editingConversationId,
+  conversationTitleDraft,
+  onConversationTitleDraftChange,
+  onStartConversationRename,
+  onCommitConversationRename,
+  onCancelConversationRename,
+  onConversationPinToggle,
+  onConversationDelete,
+  onSelectShelf,
+  onOpenConversation,
   onOpenGroupWorld,
-  onToggleCollaboratorPinned,
   onClose,
+  onOpenCalendar,
+  onOpenHeatmap,
   onCreateFromBuilder,
   onCreateCustomCollaborator,
-  onOpenSettings
+  onOpenSettings,
+  onOpenCollaboratorPage
 }: CollaboratorScopeStripProps) {
-  const { t, formatNumber } = useI18n();
+  const { t, language, formatNumber } = useI18n();
+  const frontstage = useSpaceFrontstageBindings();
+  const setActiveCollaborator = usePersonaStore((state) => state.setActiveCollaborator);
   const [createPickerOpen, setCreatePickerOpen] = useState(false);
   const [editingOpen, setEditingOpen] = useState(false);
-  const [aggregateSpinKey, setAggregateSpinKey] = useState(0);
+  const [allCollaboratorsOpen, setAllCollaboratorsOpen] = useState(false);
+
+  const navItems = useMemo(
+    () => buildVisibleCollectionShelfNavItems({ dialogue: false, info: false }, t),
+    [t]
+  );
+  const visibleConversations = useMemo(() => {
+    const sorted = [...conversations].sort((a, b) => {
+      const aPinned = a.pinnedAt ?? 0;
+      const bPinned = b.pinnedAt ?? 0;
+      if (aPinned !== bPinned) return bPinned - aPinned;
+      return b.updatedAt - a.updatedAt;
+    });
+    return sorted.slice(0, MAX_DRAWER_CONVERSATIONS);
+  }, [conversations]);
+
+  useEffect(() => {
+    if (open) return;
+    setCreatePickerOpen(false);
+    setAllCollaboratorsOpen(false);
+  }, [open]);
 
   if (!open) return null;
 
@@ -52,16 +122,323 @@ export function CollaboratorScopeStrip({
     : null;
 
   const formatSegmentCount = (count: number) => t('collection.scope.segmentCount', { count: formatNumber(count) });
-  const triggerAggregateSpin = () => {
-    setAggregateSpinKey((current) => current + 1);
+  const currentCollaborator = collaboratorScopeId
+    ? personas.find((persona) => persona.id === collaboratorScopeId) ?? null
+    : null;
+
+  const handleSelectDrawerCollaborator = (collaboratorId: string) => {
+    frontstage.setFrontstageCollaboratorId(collaboratorId);
+    frontstage.setEditingCollaboratorId(collaboratorId);
+    if (!isCompanionCollaboratorId(collaboratorId)) {
+      setActiveCollaborator(collaboratorId);
+    }
+    setCreatePickerOpen(false);
   };
 
-  const handleSelect = (collaboratorId: string | null) => {
-    if (collaboratorId === collaboratorScopeId) return;
+  const handleOpenCollaboratorPage = (collaboratorId: string) => {
+    frontstage.setFrontstageCollaboratorId(collaboratorId);
+    frontstage.setEditingCollaboratorId(collaboratorId);
+    if (!isCompanionCollaboratorId(collaboratorId)) {
+      setActiveCollaborator(collaboratorId);
+    }
     setCreatePickerOpen(false);
-    onSelectCollaboratorScope(collaboratorId);
-    onClose();
+    onOpenCollaboratorPage(collaboratorId);
   };
+
+  const rootView = (
+    <>
+      <div className="collaborator-scope-drawer-head">
+        <div className="collaborator-scope-drawer-head-copy">
+          <span>{t('collection.drawer.title')}</span>
+        </div>
+        <div className="collaborator-scope-drawer-actions">
+          <button
+            type="button"
+            className={`collaborator-scope-drawer-edit ${editingOpen ? 'active' : ''}`}
+            onClick={(event) => {
+              runSelectionAction(() => {
+                setCreatePickerOpen(false);
+                setEditingOpen((current) => !current);
+              }, { element: event.currentTarget });
+            }}
+          >
+            {editingOpen ? t('collection.scope.done') : t('collection.scope.edit')}
+          </button>
+          <button
+            type="button"
+            className="collaborator-scope-drawer-settings"
+            onClick={(event) => {
+              runSelectionAction(() => {
+                setCreatePickerOpen(false);
+                setEditingOpen(false);
+                onOpenSettings();
+                onClose();
+              }, { element: event.currentTarget });
+            }}
+          >
+            <Icon name="settings" size={14} />
+            <span>{t('collection.scope.settings')}</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="collaborator-scope-drawer-list" aria-label={t('collection.drawer.title')}>
+        <div className={`collaborator-scope-create-shell ${createPickerOpen ? 'collaborator-scope-create-shell--open' : ''}`}>
+          <button
+            type="button"
+            className="collaborator-scope-compact-row"
+            onClick={(event) => {
+              runSelectionAction(() => {
+                setEditingOpen(false);
+                setCreatePickerOpen((current) => !current);
+              }, { element: event.currentTarget });
+            }}
+            aria-expanded={createPickerOpen}
+            aria-label={t('collection.scope.createCollaborator')}
+          >
+            <span className="collaborator-scope-compact-icon" aria-hidden="true">
+              <Icon name="personaCreate" size={18} />
+            </span>
+            <span className="collaborator-scope-compact-label">{t('collection.scope.createCollaborator')}</span>
+            <span className={`collaborator-scope-compact-chevron ${createPickerOpen ? 'is-open' : ''}`} aria-hidden="true">
+              <Icon name="chevron" size={15} />
+            </span>
+          </button>
+          <CreateActionSheet
+            open={createPickerOpen}
+            ariaLabel={t('collection.scope.createCollaborator')}
+            className="collaborator-create-action-sheet"
+            onClose={() => setCreatePickerOpen(false)}
+          >
+            <CollaboratorCreatePicker
+              showCloseButton={false}
+              onCloseCreatePicker={() => setCreatePickerOpen(false)}
+              onCreateFromBuilder={() => {
+                setCreatePickerOpen(false);
+                onCreateFromBuilder();
+                onClose();
+              }}
+              onCreateCustomCollaborator={() => {
+                setCreatePickerOpen(false);
+                onCreateCustomCollaborator();
+                onClose();
+              }}
+            />
+          </CreateActionSheet>
+        </div>
+
+        <button
+          type="button"
+          className="collaborator-scope-compact-row"
+          onClick={(event) => {
+            runSelectionAction(() => {
+              setCreatePickerOpen(false);
+              onOpenGroupWorld();
+              onClose();
+            }, { element: event.currentTarget });
+          }}
+        >
+          <span className="collaborator-scope-compact-icon" aria-hidden="true">
+            <Icon name="navGroup" size={18} />
+          </span>
+          <span className="collaborator-scope-compact-label">{t('collection.scope.groupChat')}</span>
+          <span className="collaborator-scope-compact-chevron" aria-hidden="true">
+            <Icon name="chevron" size={15} />
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className="collaborator-scope-compact-row"
+          onClick={(event) => {
+            runSelectionAction(() => {
+              setCreatePickerOpen(false);
+              setAllCollaboratorsOpen((current) => !current);
+            }, { element: event.currentTarget });
+          }}
+          aria-expanded={allCollaboratorsOpen}
+        >
+          <span className="collaborator-scope-compact-icon" aria-hidden="true">
+            <Icon name="persona" size={18} />
+          </span>
+          <span className="collaborator-scope-compact-label">{t('collection.scope.allCollaborators')}</span>
+          <span className={`collaborator-scope-compact-chevron ${allCollaboratorsOpen ? 'is-open' : ''}`} aria-hidden="true">
+            <Icon name="chevron" size={15} />
+          </span>
+        </button>
+
+        {allCollaboratorsOpen ? (
+          <div className="collaborator-scope-collaborator-list">
+            {personas.map((persona) => {
+              const conversationCount = conversationCounts.byCollaboratorId[persona.id] ?? 0;
+              return (
+                <div className="collaborator-scope-collaborator-shell" key={persona.id}>
+                  <button
+                    type="button"
+                    className={`collaborator-scope-collaborator-row ${collaboratorScopeId === persona.id ? 'is-active' : ''}`}
+                    onClick={(event) => {
+                      runSelectionAction(() => handleSelectDrawerCollaborator(persona.id), { element: event.currentTarget });
+                    }}
+                  >
+                    <span className="collaborator-scope-collaborator-mark" aria-hidden="true">
+                      <CollaboratorSigil seed={persona.id} size={13} />
+                    </span>
+                    <span className="collaborator-scope-collaborator-name">{persona.name}</span>
+                    <span className="collaborator-scope-collaborator-count">{formatSegmentCount(conversationCount)}</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+
+        <div className="collaborator-scope-nav-section">
+        {currentCollaborator ? (
+          <button
+            type="button"
+            className="collaborator-scope-current-row"
+            onClick={(event) => {
+              runSelectionAction(() => handleOpenCollaboratorPage(currentCollaborator.id), { element: event.currentTarget });
+            }}
+          >
+            <span className="collaborator-scope-compact-icon" aria-hidden="true">
+              <Icon name="persona" size={18} />
+            </span>
+            <span className="collaborator-scope-compact-label">{currentCollaborator.name}</span>
+            <span className="collaborator-scope-compact-chevron" aria-hidden="true">
+              <Icon name="chevron" size={15} />
+            </span>
+          </button>
+        ) : null}
+
+          {navItems.map((item) => {
+            const active = collectionShelf === item.shelf;
+            return (
+              <button
+                key={item.shelf}
+                type="button"
+                className={`collaborator-scope-nav-row ${active ? 'is-active' : ''}`}
+                onClick={(event) => {
+                  runSelectionAction(() => {
+                    setCreatePickerOpen(false);
+                    onSelectShelf(item.shelf);
+                    onClose();
+                  }, { element: event.currentTarget });
+                }}
+              >
+                <span className="collaborator-scope-compact-icon" aria-hidden="true">
+                  <Icon name={SHELF_ICON_BY_ID[item.shelf]} size={18} />
+                </span>
+                <span className="collaborator-scope-compact-label">{item.label}</span>
+                <span className="collaborator-scope-compact-chevron" aria-hidden="true">
+                  <Icon name="chevron" size={15} />
+                </span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            className="collaborator-scope-nav-row"
+            onClick={(event) => {
+              runSelectionAction(() => {
+                setCreatePickerOpen(false);
+                onOpenCalendar();
+                onClose();
+              }, { element: event.currentTarget });
+            }}
+          >
+            <span className="collaborator-scope-compact-icon" aria-hidden="true">
+              <Icon name="navCalendar" size={18} />
+            </span>
+            <span className="collaborator-scope-compact-label">日历</span>
+            <span className="collaborator-scope-compact-chevron" aria-hidden="true">
+              <Icon name="chevron" size={15} />
+            </span>
+          </button>
+        {/* 给以后要加的东西留一格空，别挤在一起 */}
+        <div className="collaborator-scope-drawer-gap" aria-hidden="true" />
+
+        </div>
+
+        <div className="collaborator-scope-chat-section">
+          <p className="collaborator-scope-chat-label">{t('collection.drawer.conversations')}</p>
+          <div className="collaborator-scope-chat-list">
+            {visibleConversations.length === 0 ? (
+              <p className="collaborator-scope-chat-empty">{t('collection.drawer.empty')}</p>
+            ) : visibleConversations.map((conversation) => {
+              const active = conversation.id === activeConversationId;
+              const renaming = editingConversationId === conversation.id;
+              if (!editingOpen) {
+                return (
+                  <button
+                    key={conversation.id}
+                    type="button"
+                    className={`collaborator-scope-chat-row ${active ? 'is-active' : ''}`}
+                    onClick={() => {
+                      onOpenConversation(conversation.id);
+                      onClose();
+                    }}
+                  >
+                    <span className="collaborator-scope-chat-date">
+                      {conversation.pinnedAt
+                        ? t('common.pinned')
+                        : collectionRelativeDateLabel(conversation.updatedAt, language)}
+                    </span>
+                    <span className="collaborator-scope-chat-title">{conversation.title}</span>
+                  </button>
+                );
+              }
+
+              return (
+                <div key={conversation.id} className={`collaborator-scope-chat-row collaborator-scope-chat-row--editing ${active ? 'is-active' : ''}`}>
+                  {renaming ? (
+                    <div className="collaborator-scope-chat-rename">
+                      <input
+                        value={conversationTitleDraft}
+                        onChange={(event) => onConversationTitleDraftChange(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') onCommitConversationRename(conversation.id);
+                          if (event.key === 'Escape') onCancelConversationRename();
+                        }}
+                        autoFocus
+                        aria-label={t('collection.dialogue.renameAria')}
+                      />
+                      <button type="button" onClick={() => onCommitConversationRename(conversation.id)} aria-label={t('collection.dialogue.saveRename')}>
+                        <Icon name="check" size={14} />
+                      </button>
+                      <button type="button" onClick={onCancelConversationRename} aria-label={t('collection.dialogue.cancelRename')}>
+                        <Icon name="x" size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="collaborator-scope-chat-date">
+                        {conversation.pinnedAt
+                          ? t('common.pinned')
+                          : collectionRelativeDateLabel(conversation.updatedAt, language)}
+                      </span>
+                      <span className="collaborator-scope-chat-title">{conversation.title}</span>
+                      <div className="collaborator-scope-chat-actions">
+                        <button type="button" onClick={() => onStartConversationRename(conversation.id, conversation.title)} aria-label={t('collection.dialogue.rename')}>
+                          <Icon name="edit" size={14} />
+                        </button>
+                        <button type="button" className={conversation.pinnedAt ? 'is-active' : ''} onClick={() => onConversationPinToggle(conversation.id)} aria-label={conversation.pinnedAt ? t('collection.dialogue.unpin') : t('collection.dialogue.pin')}>
+                          <Icon name="pin" size={14} />
+                        </button>
+                        <button type="button" onClick={() => onConversationDelete(conversation.id, conversation.title)} aria-label={t('collection.dialogue.delete')}>
+                          <Icon name="trash" size={14} />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </>
+  );
 
   const drawer = (
     <section className="collaborator-scope-drawer collaborator-scope-drawer--open" aria-label={t('collection.scope.drawerAria')}>
@@ -78,194 +455,7 @@ export function CollaboratorScopeStrip({
       />
 
       <aside className="collaborator-scope-drawer-panel" role="dialog" aria-modal="false" aria-label={t('collection.scope.dialogAria')}>
-        <div className="collaborator-scope-drawer-head">
-          <div className="collaborator-scope-drawer-head-copy">
-            <span>{t('collection.scope.title')}</span>
-          </div>
-          <div className="collaborator-scope-drawer-actions">
-            <button
-              type="button"
-              className={`collaborator-scope-drawer-edit ${editingOpen ? 'active' : ''}`}
-              onClick={(event) => {
-                runSelectionAction(() => {
-                  setCreatePickerOpen(false);
-                  setEditingOpen((current) => !current);
-                }, { element: event.currentTarget });
-              }}
-            >
-              {editingOpen ? t('collection.scope.done') : t('collection.scope.edit')}
-            </button>
-            <button
-              type="button"
-              className="collaborator-scope-drawer-settings"
-              onClick={(event) => {
-                runSelectionAction(() => {
-                  setCreatePickerOpen(false);
-                  setEditingOpen(false);
-                  onClose();
-                  onOpenSettings();
-                }, { element: event.currentTarget });
-              }}
-            >
-              <Icon name="settings" size={14} />
-              <span>{t('collection.scope.settings')}</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="collaborator-scope-drawer-list" role="tablist" aria-label={t('collection.scope.dialogAria')}>
-          <div className={`collaborator-scope-create-shell ${createPickerOpen ? 'collaborator-scope-create-shell--open' : ''}`}>
-            <button
-              type="button"
-              className={`collaborator-scope-card collaborator-scope-card--special collaborator-scope-card--create ${createPickerOpen ? 'active' : ''}`}
-              onClick={(event) => {
-                runSelectionAction(() => {
-                  setEditingOpen(false);
-                  setCreatePickerOpen((prev) => !prev);
-                }, { element: event.currentTarget });
-              }}
-              aria-expanded={createPickerOpen}
-              aria-label={t('collection.scope.createCollaborator')}
-            >
-              <span className="collaborator-scope-card-title">
-                <span className="collaborator-scope-create-mark" aria-hidden="true">
-                  <Icon name="personaCreate" size={18} />
-                </span>
-                <strong>{t('collection.scope.createCollaborator')}</strong>
-              </span>
-            </button>
-            <CreateActionSheet
-              open={createPickerOpen}
-              ariaLabel={t('collection.scope.createCollaborator')}
-              className="collaborator-create-action-sheet"
-              onClose={() => setCreatePickerOpen(false)}
-            >
-              <CollaboratorCreatePicker
-                showCloseButton={false}
-                onCloseCreatePicker={() => setCreatePickerOpen(false)}
-                onCreateFromBuilder={() => {
-                  setCreatePickerOpen(false);
-                  onClose();
-                  onCreateFromBuilder();
-                }}
-                onCreateCustomCollaborator={() => {
-                  setCreatePickerOpen(false);
-                  onClose();
-                  onCreateCustomCollaborator();
-                }}
-              />
-            </CreateActionSheet>
-          </div>
-          <button
-            type="button"
-            className="collaborator-scope-card collaborator-scope-card--special collaborator-scope-card--group"
-            onClick={(event) => {
-              if (editingOpen) return;
-              runSelectionAction(() => {
-                setCreatePickerOpen(false);
-                onOpenGroupWorld();
-                onClose();
-              }, { element: event.currentTarget });
-            }}
-            role="tab"
-            aria-selected={false}
-            aria-disabled={editingOpen || undefined}
-          >
-            <span className="collaborator-scope-card-title">
-              <span className="collaborator-scope-group-mark" aria-hidden="true">
-                <Icon name="navGroup" size={18} />
-              </span>
-              <strong>{t('collection.scope.groupChat')}</strong>
-            </span>
-            <span className="collaborator-scope-card-meta">
-              <span>{t('collection.scope.groupDetail')}</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            className={`collaborator-scope-card collaborator-scope-card--special collaborator-scope-card--aggregate ${collaboratorScopeId === null ? 'active' : ''}`}
-            onClick={(event) => {
-              if (editingOpen) return;
-              runSelectionAction(() => {
-                triggerAggregateSpin();
-                handleSelect(null);
-              }, { element: event.currentTarget });
-            }}
-            role="tab"
-            aria-selected={collaboratorScopeId === null}
-            aria-disabled={editingOpen || undefined}
-          >
-            <span className="collaborator-scope-card-title">
-              <span className="collaborator-scope-aggregate-mark">
-                <WorldMark
-                  key={aggregateSpinKey}
-                  world="chat"
-                  spinning={aggregateSpinKey > 0}
-                  className="collaborator-scope-aggregate-world-mark"
-                />
-              </span>
-              <strong>{t('collection.scope.allCollaborators')}</strong>
-            </span>
-            <span className="collaborator-scope-card-meta">
-              <span>{t('collection.scope.allRooms')}</span>
-            </span>
-            <span className="collaborator-scope-card-count">{formatSegmentCount(conversationCounts.total)}</span>
-          </button>
-          {personas.map((persona) => {
-            const deletable = editingOpen;
-            const conversationCount = conversationCounts.byCollaboratorId[persona.id] ?? 0;
-
-            return (
-              <div
-                key={persona.id}
-                className={`collaborator-scope-card-shell ${deletable ? 'collaborator-scope-card-shell--editing' : ''}`}
-              >
-                <button
-                  type="button"
-                  className={`collaborator-scope-card ${collaboratorScopeId === persona.id ? 'active' : ''} ${persona.pinnedAt ? 'pinned' : ''} ${deletable ? 'collaborator-scope-card--editing' : ''}`}
-                  onClick={(event) => {
-                    if (editingOpen) return;
-                    runSelectionAction(() => handleSelect(persona.id), { element: event.currentTarget });
-                  }}
-                  role="tab"
-                  aria-selected={collaboratorScopeId === persona.id}
-                  aria-disabled={editingOpen || undefined}
-                >
-                  <span className="collaborator-scope-card-title">
-                    <span className="collaborator-scope-card-badge">
-                      <CollaboratorSigil seed={persona.id} size={13} />
-                    </span>
-                    {persona.pinnedAt ? (
-                      <span className="collaborator-scope-card-pin-mark" aria-hidden="true">
-                        <Icon name="polarisStar" size={11} />
-                      </span>
-                    ) : null}
-                    <strong>{persona.name}</strong>
-                  </span>
-                  <span className="collaborator-scope-card-meta">
-                    <span>{normalizePersonaDefaultSummary(persona.description) || t('collection.scope.noSummary')}</span>
-                  </span>
-                  <span className="collaborator-scope-card-count">{formatSegmentCount(conversationCount)}</span>
-                </button>
-                {deletable ? (
-                  <>
-                    <button
-                      type="button"
-                      className={`collaborator-scope-card-pin ${persona.pinnedAt ? 'active' : ''}`}
-                      aria-label={persona.pinnedAt ? t('collection.scope.unpinAria', { name: persona.name }) : t('collection.scope.pinAria', { name: persona.name })}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        runSelectionAction(() => onToggleCollaboratorPinned(persona.id), { element: event.currentTarget });
-                      }}
-                    >
-                      <Icon name="pin" size={12} />
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+        {rootView}
       </aside>
     </section>
   );

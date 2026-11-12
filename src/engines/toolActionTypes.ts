@@ -268,6 +268,18 @@ export type CanonicalToolAction =
       targetLabel?: string;
     }
   | {
+      kind: 'startVoiceCall';
+      /** 可选的一行理由，显示在来电界面上。 */
+      reason?: string;
+      targetLabel?: string;
+    }
+  | {
+      kind: 'hangUp';
+      /** 可选的一句话说明为什么要挂断，用于排查。 */
+      reason?: string;
+      targetLabel?: string;
+    }
+  | {
       kind: 'inspectAttachments';
       scope?: 'latest' | 'all';
       query?: string;
@@ -324,6 +336,29 @@ export type CanonicalToolAction =
       targetLabel?: string;
     }
   | {
+      kind: 'readCalendarNotes';
+      fromDate?: string;
+      toDate?: string;
+      targetLabel?: string;
+    }
+  | {
+      kind: 'writeCalendarNote';
+      date: string;
+      text: string;
+      targetLabel?: string;
+    }
+  | {
+      kind: 'updateCalendarNote';
+      noteId: string;
+      text: string;
+      targetLabel?: string;
+    }
+  | {
+      kind: 'deleteCalendarNote';
+      noteId: string;
+      targetLabel?: string;
+    }
+  | {
       kind: 'readAttachmentText';
       target?: string;
       maxChars?: number;
@@ -351,6 +386,12 @@ export type CanonicalToolAction =
       kind: 'sendImageAttachment';
       target?: string;
       title?: string;
+      targetLabel?: string;
+    }
+  | {
+      kind: 'sendVoiceMessage';
+      /** 要念出来的那句话；这时还没有音频，合成要等用户点「允许」。 */
+      text: string;
       targetLabel?: string;
     }
   | {

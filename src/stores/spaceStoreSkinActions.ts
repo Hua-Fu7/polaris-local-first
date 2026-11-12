@@ -134,6 +134,18 @@ export function createSpaceSkinActions(set: SpaceStoreSet) {
         const nextTheme = restoreThemeFrame(snapshot);
         return replaceResolvedThemeFrame(state, nextTheme);
       }),
+    deleteSkinSnapshot: (snapshotId: string) =>
+      set((state) =>
+        patchThemeFields(state, {
+          skinHistory: state.theme.skinHistory.filter((snapshot) => snapshot.id !== snapshotId)
+        })
+      ),
+    clearSkinHistory: () =>
+      set((state) =>
+        patchThemeFields(state, {
+          skinHistory: []
+        })
+      ),
     rollbackLastSkin: () =>
       set((state) => {
         const [latestSnapshot, ...restHistory] = state.theme.skinHistory;
@@ -149,6 +161,9 @@ export function createSpaceSkinActions(set: SpaceStoreSet) {
     | 'deleteSavedSkin'
     | 'commitSkinSnapshot'
     | 'restoreSkinSnapshot'
+    | 'deleteSkinSnapshot'
+    | 'clearSkinHistory'
     | 'rollbackLastSkin'
   >;
 }
+

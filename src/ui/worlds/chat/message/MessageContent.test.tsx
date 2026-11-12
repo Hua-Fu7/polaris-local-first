@@ -222,32 +222,13 @@ describe('MessageContent', () => {
     expect(html).not.toContain('.app-shell.collection .world-collection .card');
   });
 
-  it('shows thinking projection for a thinking-only assistant message before the next action', () => {
+  it('keeps the thinking chain out of the message body while there is no prose yet', () => {
     const html = renderToStaticMarkup(
       <MessageContent
         message={createAssistantMessage('', {
           thinkingText: '先确认要做什么。'
         })}
         codeCardActionMode="hidden"
-        isCodeExpanded={false}
-        onToggleCodeExpanded={() => {}}
-        onApplyCustomCss={() => {}}
-        showThinking
-      />
-    );
-
-    expect(html).toContain('message-thinking-projection');
-    expect(html).toContain('先确认要做什么。');
-  });
-
-  it('hides thinking projection once another action represents the next step', () => {
-    const html = renderToStaticMarkup(
-      <MessageContent
-        message={createAssistantMessage('', {
-          thinkingText: '先确认要做什么。'
-        })}
-        codeCardActionMode="hidden"
-        collapseThinkingProjection
         isCodeExpanded={false}
         onToggleCodeExpanded={() => {}}
         onApplyCustomCss={() => {}}

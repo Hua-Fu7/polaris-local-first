@@ -107,19 +107,19 @@ export function findPolarisToolManifestEntry(name: string): PolarisToolManifestE
 }
 
 export function resolveAvailablePolarisTools(context?: ToolResolutionSource) {
-  if (areAllUserFacingPolarisToolPromptGroupsDisabled(
+  const allToolboxGroupsDisabled = areAllUserFacingPolarisToolPromptGroupsDisabled(
     context?.enabledToolGroups,
     context?.toolEnforcementScope
-  )) {
-    return [];
-  }
+  );
 
   return [
     ...POLARIS_TOOL_REGISTRY,
     ...POLARIS_TOOL_REGISTRY_ALIASES,
     ...resolveCardToolDefinitions(context),
     ...resolveMcpToolDefinitions(context)
-  ].filter((tool) => isPolarisNativeToolVisible(tool, context));
+  ]
+    .filter((tool) => !allToolboxGroupsDisabled || tool.alwaysAvailable)
+    .filter((tool) => isPolarisNativeToolVisible(tool, context));
 }
 
 export function isPolarisToolExposedAsNative(tool: PolarisToolDefinition) {

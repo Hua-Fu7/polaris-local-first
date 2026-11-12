@@ -110,7 +110,6 @@ export function MenuSheet({
             storageHealthSnapshot={controller.storageHealthSnapshot}
             memorySettingsVisible={MEMORY_RELEASE_GATES.showGlobalConversationSummarySettings}
             desktopLocalAvailable={controller.desktopLocalAvailable}
-            androidApkUpdateAvailable={controller.androidApkUpdateAvailable}
             onOpenDisplay={() => controller.onSetPage('display')}
             onOpenFonts={() => controller.onSetPage('fonts')}
             onOpenMemory={() => controller.onSetPage('memory')}
@@ -127,9 +126,7 @@ export function MenuSheet({
             onOpenBackup={() => controller.onSetPage('backup')}
             onOpenPrivacy={() => controller.onSetPage('privacy')}
             onClose={onClose}
-            onCheckAndroidApkUpdate={() => {
-              void controller.onCheckAndroidApkUpdate();
-            }}
+
           />
         ) : null}
         {visiblePage === 'backup' ? (
@@ -215,8 +212,12 @@ export function MenuSheet({
         {visiblePage === 'voice' ? (
           <MenuVoicePage
             voiceGeneration={controller.voiceGeneration}
+            voiceTranscription={controller.voiceTranscription}
+            voiceCallOrbColor={controller.customization.voiceCallOrbColor}
             onBack={() => controller.onSetPage('root')}
             onSetVoiceGeneration={controller.onSetVoiceGeneration}
+            onSetVoiceTranscription={controller.onSetVoiceTranscription}
+            onSetVoiceCallOrbColor={controller.onSetVoiceCallOrbColor}
           />
         ) : null}
         {visiblePage === 'mcp' ? (
@@ -261,7 +262,6 @@ export function MenuSheet({
             displayPreferences={controller.displayPreferences}
             onBack={() => controller.onSetPage('root')}
             onSetAppearance={controller.onSetAppearance}
-            onSetHapticsEnabled={controller.onSetHapticsEnabled}
           />
         ) : null}
         {visiblePage === 'fonts' ? (
@@ -319,3 +319,7 @@ export function MenuSheet({
     </div>
   );
 }
+
+
+
+

@@ -49,10 +49,13 @@ import type {
   ConversationTaskState,
   ImageUnderstandingSettings,
   MemoryVectorRetrievalSettings,
+  ObBrainSettings,
   Persona,
   ProviderProfile,
   ToolLedgerEntry
 } from '../../types/domain';
+import { resolveObRecall, type ObRecallResult } from '../ombreBrain/obRecall';
+import type { ObClient } from '../ombreBrain/obClient';
 import { prepareConversationMessages } from './requestConversationPreparation';
 import {
   buildRequestAudit,
@@ -121,12 +124,55 @@ function buildConversationContext(args: {
   });
 
   return {
-    conversation,
+    conversation: ensureTrailingUserTurn(conversation),
     contextPlan,
     historyDecision,
     conversationBuildMs,
     contextPlanMs: runtimeNow() - contextPlanStartedAt
   };
+}
+
+/**
+ * 兜底：交给模型的历史里如果最后没有一条用户消息，就补一条说明。
+ *
+ * 模型看到「只有自己的回复、没有新消息」时，会在 thinking 里反复确认
+ * 「这轮到底有没有新消息」，然后卡在那儿。这里直接把话说清楚：
+ * 要么是续写，要么是系统触发，别去猜。
+ */
+function ensureTrailingUserTurn(conversation: RequestMessage[]): RequestMessage[] {
+  if (conversation.length === 0) return conversation;
+
+  // 尾部有用户消息、但正文是空的：这是最容易让模型说"你说的话是空的"的情况。
+  const lastIndex = conversation.length - 1;
+  const last = conversation[lastIndex];
+  if (last?.role === 'user' && !last.content.trim()) {
+    const filled = [...conversation];
+    filled[lastIndex] = {
+      ...last,
+      content: '[用户这条消息没有正文：可能是表情包、图片或附件。请根据附件/上下文理解，不要反问“你为什么没说话”。]'
+    };
+    return filled;
+  }
+
+  const tail = conversation.slice(-3);
+  if (tail.some((message) => message.role === 'user')) return conversation;
+
+  const lastUser = [...conversation].reverse().find((message) => message.role === 'user') ?? null;
+  if (lastUser) {
+    // 历史里有用户消息，只是没落在尾部（被裁掉了）——把它补回最后。
+    return [...conversation, { ...lastUser, id: `${lastUser.id}:tail` }];
+  }
+
+  return [
+    ...conversation,
+    {
+      id: `polaris-tail-notice-${conversation.length}`,
+      role: 'user',
+      content: '[系统说明] 这一轮没有新的用户消息：是上一轮的续写、重试，或者你自己发起的。不要重复回答旧消息，也不要再确认“有没有新消息”。',
+      timestamp: Date.now(),
+      origin: 'assistant-reply'
+    } as RequestMessage
+  ];
 }
 
 function runtimeNow() {
@@ -572,6 +618,12 @@ export async function prepareCollaboratorReplyRequest(params: {
   providers?: ProviderProfile[];
   globalApi?: ProviderProfile;
   memoryVectorRetrieval?: MemoryVectorRetrievalSettings;
+  /** Ombre-Brain 接入设置；没开就不召回。 */
+  obBrain?: ObBrainSettings;
+  /** 取 OB 密码；不传就当作没配密码，安静跳过。 */
+  loadObPassword?: () => Promise<string>;
+  /** 测试注入用；外部不传就按设置现建。 */
+  obRecallClient?: ObClient;
   imageUnderstanding?: ImageUnderstandingSettings;
   persona: Persona | null | undefined;
   personas?: Persona[];
@@ -595,6 +647,8 @@ export async function prepareCollaboratorReplyRequest(params: {
   audit: AssistantRequestAudit;
   conversation: RequestMessage[];
   imageUnderstandingResults: RequestImageUnderstandingResult[];
+  /** 这一轮从 OB 召回了什么（界面用来显示条数），没开或没搜到就是空。 */
+  obRecall?: ObRecallResult;
 }> {
   const { api, persona, personas, messages, toolLedger, toolContext, currentTask, nickname } = params;
   const startedAt = runtimeNow();
@@ -645,6 +699,7 @@ export async function prepareCollaboratorReplyRequest(params: {
     toolContext,
     currentTask,
     toolProtocolMode,
+    reasoningMode: providerCapabilities.output.reasoning,
     messages: requestSourceMessages
   });
   const promptPartsMs = runtimeNow() - stepStartedAt;
@@ -661,6 +716,18 @@ export async function prepareCollaboratorReplyRequest(params: {
   });
   const truncationMs = runtimeNow() - stepStartedAt;
   stepStartedAt = runtimeNow();
+  // 记忆只在"说到相关的事"时才带：常驻几条 + 跟这句话相关的，其余跳过。
+  // 最后一条没有正文（只发了图片/表情包）时，往前找最近一条有文字的用户消息。
+  const memoryFocusText = (() => {
+    const source = requestSourceMessages || [];
+    for (let index = source.length - 1; index >= 0; index -= 1) {
+      const message = source[index];
+      if (message.role !== 'user') continue;
+      const text = message.content.trim();
+      if (text) return text;
+    }
+    return '';
+  })();
   const memoryPlan = resolveRequestMemoryPlan({
     memory: persona?.memory,
     inheritedMemorySources: persona
@@ -668,9 +735,20 @@ export async function prepareCollaboratorReplyRequest(params: {
           .filter((candidate) => candidate.id !== persona.id)
           .map((candidate) => ({ id: candidate.id, memory: candidate.memory }))
       : [],
-    maxTokens: budgetPlan.buckets.memory.maxTokens
+    maxTokens: budgetPlan.buckets.memory.maxTokens,
+    focusText: memoryFocusText,
+    coreMemories: persona?.memory.coreMemories
   });
   const memoryPlanMs = runtimeNow() - stepStartedAt;
+  // OB 自动召回：拿这一句话去搜，命中才带。失败静默，超时 800ms 封顶。
+  stepStartedAt = runtimeNow();
+  const obRecall = await resolveObRecall({
+    settings: params.obBrain,
+    focusText: memoryFocusText,
+    loadPassword: params.loadObPassword,
+    client: params.obRecallClient
+  });
+  const obRecallMs = runtimeNow() - stepStartedAt;
   const semanticRecallEnabled =
     params.semanticRecallEnabled !== false
     && persona?.memory.crossConversationRecallEnabled !== false;
@@ -773,7 +851,10 @@ export async function prepareCollaboratorReplyRequest(params: {
     messages: runtimeConversation,
     messagesPrepared: true,
     toolLedger,
-    memoryLines: memoryPlan.selectedLines,
+    // 常驻留在系统提示（稳定前缀），按需挪到用户消息前面（每轮会变）
+    memoryLines: memoryPlan.coreLines ?? memoryPlan.selectedLines,
+    onDemandMemoryLines: memoryPlan.relevantLines ?? [],
+    obRecallLines: obRecall.lines,
     conversationSummaries: conversationSummaryPlan.selectedSummaries,
     semanticRecallCandidates,
     memoryReferenceDocs: canReadMemoryDocs ? persona?.memory.referenceDocs ?? [] : [],
@@ -819,6 +900,7 @@ export async function prepareCollaboratorReplyRequest(params: {
     advanced: preparedAdvanced,
     conversation: runtimeConversation,
     imageUnderstandingResults: imageUnderstanding.results,
+    obRecall,
     audit: buildRequestAudit({
       requestId,
       assistantName,

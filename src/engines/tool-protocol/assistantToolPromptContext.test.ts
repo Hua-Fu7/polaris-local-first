@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCardContextPrompt } from './assistantToolPromptContext';
+import { buildAttachmentContextPrompt, buildCardContextPrompt } from './assistantToolPromptContext';
 import { buildWorkspaceContextPrompt } from './assistantToolPromptWorkspace';
 import type { AssistantToolContext } from './assistantToolProtocolTypes';
 
@@ -282,5 +282,54 @@ describe('assistantToolPromptContext', () => {
     expect(prompt).not.toContain('最近刚写过：app/page.tsx');
     expect(prompt).not.toContain('当前活动房间');
     expect(prompt).not.toContain('cardFaceCss');
+  });
+
+  it('labels attachments from an earlier turn as history instead of pretending they just arrived', () => {
+    const prompt = buildAttachmentContextPrompt({
+      ...createContext('available'),
+      attachmentSnapshot: {
+        latest: [{
+          id: 'attachment-1',
+          assetId: 'asset-1',
+          kind: 'image',
+          name: 'photo.jpeg'
+        }],
+        latestFromCurrentTurn: false,
+        available: [{
+          id: 'attachment-1',
+          assetId: 'asset-1',
+          kind: 'image',
+          name: 'photo.jpeg'
+        }]
+      }
+    });
+
+    expect(prompt).toContain('历史附件');
+    expect(prompt).toContain('不要当成用户刚发的图片或文件');
+    expect(prompt).not.toContain('本轮用户附件：');
+  });
+
+  it('keeps the current-turn label when the user really did attach something this turn', () => {
+    const prompt = buildAttachmentContextPrompt({
+      ...createContext('available'),
+      attachmentSnapshot: {
+        latest: [{
+          id: 'attachment-2',
+          assetId: 'asset-2',
+          kind: 'image',
+          name: 'new-photo.jpeg'
+        }],
+        latestFromCurrentTurn: true,
+        available: [{
+          id: 'attachment-2',
+          assetId: 'asset-2',
+          kind: 'image',
+          name: 'new-photo.jpeg'
+        }]
+      }
+    });
+
+    expect(prompt).toContain('本轮用户附件：');
+    expect(prompt).not.toContain('历史附件');
   });
 });

@@ -14,7 +14,6 @@ type MenuRootPageProps = {
   memorySettingsVisible: boolean;
   customFontCount: number;
   desktopLocalAvailable: boolean;
-  androidApkUpdateAvailable: boolean;
   onOpenDisplay: () => void;
   onOpenFonts: () => void;
   onOpenMemory: () => void;
@@ -31,7 +30,6 @@ type MenuRootPageProps = {
   onOpenBackup: () => void;
   onOpenPrivacy: () => void;
   onClose: () => void;
-  onCheckAndroidApkUpdate: () => void;
 };
 
 export function MenuRootPage({
@@ -43,7 +41,6 @@ export function MenuRootPage({
   memorySettingsVisible,
   customFontCount,
   desktopLocalAvailable,
-  androidApkUpdateAvailable,
   onOpenDisplay,
   onOpenFonts,
   onOpenMemory,
@@ -59,8 +56,7 @@ export function MenuRootPage({
   onOpenGateway,
   onOpenBackup,
   onOpenPrivacy,
-  onClose,
-  onCheckAndroidApkUpdate
+  onClose
 }: MenuRootPageProps) {
   const { t, formatNumber } = useI18n();
   const appLanguage = useSpaceStore((state) => state.appLanguage);
@@ -128,16 +124,7 @@ export function MenuRootPage({
           helpText={t('settings.gateway.help')}
           onClick={onOpenGateway}
         />
-        {androidApkUpdateAvailable ? (
-          <MenuSheetItem
-            icon="download"
-            title={t('settings.androidUpdate.title')}
-            detail={t('settings.androidUpdate.detail')}
-            helpText={t('settings.androidUpdate.help')}
-            onClick={onCheckAndroidApkUpdate}
-          />
-        ) : null}
-      </section>
+</section>
 
       <section className="menu-section">
         <div className="menu-section-head">
@@ -279,3 +266,7 @@ export function MenuRootPage({
     </div>
   );
 }
+
+
+
+

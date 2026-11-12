@@ -109,6 +109,10 @@ export function isDeepSeekThinkingModel(modelId?: string | null) {
   return (
     model.includes('deepseek-reasoner')
     || model.includes('deepseek-v4')
+    // deepseek-flash / deepseek-v4-flash 是 DeepSeek-V4.1-Flash，同属 V4 系列思考模型：
+    // 输出 reasoning_content，且思考模式下 `tool_choice: required` 会 400。官方文档把
+    // deepseek-v4-flash 列为 deepseek-flash 的旧别名（已退役，由 V4.1-Flash 接管）。
+    || model.includes('deepseek-flash')
     || model.includes('deepseek-r1')
   );
 }

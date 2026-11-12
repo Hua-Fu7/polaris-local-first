@@ -282,6 +282,7 @@ function previewRuntime(rowMap: Map<string, LocalDataStoredRow>): RuntimeHydrati
     imageGeneration: settings.imageGeneration,
     imageUnderstanding: settings.imageUnderstanding,
     voiceGeneration: settings.voiceGeneration,
+    voiceTranscription: settings.voiceTranscription,
     toolPromptPreferences: settings.toolPromptPreferences,
     taskModeEnabled: settings.taskModeEnabled,
     mcpServers: rows.filter((row): row is RuntimeObjectRow<'mcp-server'> => row.kind === 'mcp-server').map((row) => row.value),

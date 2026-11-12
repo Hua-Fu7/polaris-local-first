@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isClaude46Model,
   isClaudeModel,
+  isDeepSeekThinkingModel,
   isGatewayBaseUrl,
   isKimiK2InstructModel,
   isKimiK2Model,
@@ -35,5 +36,14 @@ describe('providerMatching', () => {
     expect(isKimiK2Model('moonshotai/Kimi-K2-Instruct')).toBe(true);
     expect(isKimiK2InstructModel('moonshotai/Kimi-K2-Instruct')).toBe(true);
     expect(isKimiK2ThinkingModel('moonshotai/Kimi-K2-Thinking')).toBe(true);
+  });
+
+  it('treats deepseek-flash as a V4 thinking model (reasoning + required unsupported)', () => {
+    expect(isDeepSeekThinkingModel('deepseek-flash')).toBe(true);
+    expect(isDeepSeekThinkingModel('deepseek-v4-flash')).toBe(true);
+    expect(isDeepSeekThinkingModel('deepseek-v4-pro')).toBe(true);
+    expect(isDeepSeekThinkingModel('deepseek-reasoner')).toBe(true);
+    // 非思考模型 deepseek-chat（V3）不受影响。
+    expect(isDeepSeekThinkingModel('deepseek-chat')).toBe(false);
   });
 });

@@ -1,4 +1,4 @@
-import { buildAttachmentContextPrompt, buildCardContextPrompt, buildDesktopLocalContextPrompt, buildUiContextPrompt } from './assistantToolPromptContext';
+import { buildAttachmentContextPrompt, buildCalendarContextPrompt, buildCardContextPrompt, buildDesktopLocalContextPrompt, buildUiContextPrompt, buildXinchaoContextPrompt } from './assistantToolPromptContext';
 import { buildBulletPromptLines } from '../promptFormatting';
 import type { AssistantToolContext } from './assistantToolProtocolTypes';
 import {
@@ -27,6 +27,8 @@ export type AssistantToolPromptSectionName =
   | 'task_handoff_capability'
   | 'tool_context_capability'
   | 'ui_context_capability'
+  | 'calendar_context_capability'
+  | 'xinchao_context_capability'
   | 'attachment_context_capability'
   | 'desktop_local_context_capability'
   | 'room_context_capability'
@@ -314,6 +316,16 @@ function buildContextSnapshotSections(
       content: buildUiContextPrompt(context)
     },
     {
+      name: 'xinchao_context_capability',
+      label: '心潮上下文快照',
+      content: buildXinchaoContextPrompt(context)
+    },
+    {
+      name: 'calendar_context_capability',
+      label: '日历上下文快照',
+      content: buildCalendarContextPrompt(context)
+    },
+    {
       name: 'attachment_context_capability',
       label: '附件上下文快照',
       content: receipt.hasAttachmentOrArchiveTools ? buildAttachmentContextPrompt(context) : ''
@@ -376,7 +388,7 @@ export function buildAssistantToolPromptSections(
     context?.toolEnforcementScope
   );
 
-  if (allToolboxGroupsDisabled) {
+  if (allToolboxGroupsDisabled && !receipt.nativeTools.length) {
     return [{
       name: 'tool_disabled_capability',
       label: '工具关闭状态',

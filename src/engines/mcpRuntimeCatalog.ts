@@ -73,6 +73,17 @@ export type McpToolCallResult =
 
 const mcpToolCatalogCache = new Map<string, McpToolCatalogCacheEntry>();
 
+// 连不上的 MCP 服务器曾经把每一次发送都拖住好几秒：目录解析是按
+// 「4 次尝试 + 600/1200/2400 退避」来的，而纯失败的结果不进缓存，
+// 于是每条消息都要重走一遍。这里把「近期的成功目录」和「近期的彻底失败」
+// 都当作可直接复用的结论——发送路径不再为新鲜度等网络，
+// 心跳（`useMcpCatalogHeartbeat`，12 秒一次）带 forceRefresh 负责补齐新鲜度。
+const MCP_CATALOG_FRESH_TTL_MS = 60_000;
+// 失败短路可以放得比「新鲜度」宽：恢复不靠它过期，而是靠心跳成功时清掉这条记录
+// （心跳每 12 秒一次）。它只兜底心跳没跑起来的情况。
+const MCP_CATALOG_FAILURE_TTL_MS = 120_000;
+const mcpToolCatalogFailureCache = new Map<string, number>();
+
 function normalizeToolNameFragment(value: string) {
   return value
     .trim()
@@ -324,9 +335,31 @@ async function resolveServerToolsWithRetry(args: {
   retryDelaysMs: readonly number[];
   useCachedOnFailure: boolean;
   includeDisabledTools: boolean;
+  forceRefresh: boolean;
 }) {
   const cacheKey = buildMcpCatalogCacheKey(args.server);
+  const projectCachedTools = (cached: McpToolCatalogCacheEntry) =>
+    args.includeDisabledTools
+      ? cached.tools
+      : cached.tools.filter((tool) => tool.enabled !== false);
   let lastError: unknown = null;
+
+  // 同步目录（`includeDisabledTools`）是用户手动点的，必须真去拉一次——它既要看到
+  // 被禁用的工具，也要把「服务器现在到底通不通」如实反馈出来，所以两个短路都绕开。
+  if (!args.forceRefresh && !args.includeDisabledTools) {
+    const freshCatalog = mcpToolCatalogCache.get(cacheKey);
+    if (freshCatalog && Date.now() - freshCatalog.updatedAt <= MCP_CATALOG_FRESH_TTL_MS) {
+      return { tools: projectCachedTools(freshCatalog), error: null };
+    }
+
+    const failedAt = mcpToolCatalogFailureCache.get(cacheKey);
+    if (failedAt !== undefined && Date.now() - failedAt <= MCP_CATALOG_FAILURE_TTL_MS) {
+      return {
+        tools: [] as McpResolvedToolDefinition[],
+        error: `${args.server.name}：最近一次读取工具目录失败，已跳过重试。`
+      };
+    }
+  }
 
   for (let attempt = 0; attempt <= args.retryDelaysMs.length; attempt += 1) {
     try {
@@ -340,6 +373,7 @@ async function resolveServerToolsWithRetry(args: {
         tools,
         updatedAt: Date.now()
       });
+      mcpToolCatalogFailureCache.delete(cacheKey);
       return { tools, error: null };
     } catch (error) {
       lastError = error;
@@ -350,14 +384,12 @@ async function resolveServerToolsWithRetry(args: {
     }
   }
 
+  mcpToolCatalogFailureCache.set(cacheKey, Date.now());
+
   const cached = args.useCachedOnFailure ? mcpToolCatalogCache.get(cacheKey) : undefined;
   if (cached?.tools.length) {
-    return {
-      tools: args.includeDisabledTools
-        ? cached.tools
-        : cached.tools.filter((tool) => tool.enabled !== false),
-      error: null
-    };
+    // 服务器暂时挂了但手里还有旧目录：继续用旧的，别让工具凭空消失。
+    return { tools: projectCachedTools(cached), error: null };
   }
 
   return {
@@ -373,6 +405,8 @@ export async function resolveMcpToolCatalog(args: {
   retryDelaysMs?: readonly number[];
   useCachedOnFailure?: boolean;
   includeDisabledTools?: boolean;
+  /** 后台刷新（心跳）用：绕过近期缓存与失败短路，真正打一次网络。 */
+  forceRefresh?: boolean;
 }): Promise<McpToolCatalogResolution> {
   const activeServers = (args.servers ?? []).filter((server) => server.isActive && server.url.trim());
   if (!activeServers.length) {
@@ -392,7 +426,8 @@ export async function resolveMcpToolCatalog(args: {
         fetchImpl: args.fetchImpl,
         retryDelaysMs,
         useCachedOnFailure: args.useCachedOnFailure !== false,
-        includeDisabledTools: args.includeDisabledTools === true
+        includeDisabledTools: args.includeDisabledTools === true,
+        forceRefresh: args.forceRefresh === true
       })
     )
   );
@@ -403,8 +438,38 @@ export async function resolveMcpToolCatalog(args: {
   };
 }
 
+/**
+ * 出站前按 MCP 服务端自己声明的 schema 过滤参数。
+ *
+ * 有些模型网关（尤其面对零参数的 schema）会自作主张补一个占位字段（常见是 `_`）
+ * 并标成必填；模型照着填、我们照着发，服务端（pydantic，extra=forbid）直接拒——
+ * 目录是通的，但每次调用都失败。所以这里做一层防御：
+ *  - 零参数工具（没声明任何 properties）：一律发 {}
+ *  - 声明了 properties 且 additionalProperties === false：只保留声明过的键
+ *  - 其它情况原样透传，避免误伤接受自由字段的工具
+ */
+export function filterMcpToolArguments(
+  inputSchema: Record<string, unknown> | undefined,
+  argumentsObject: Record<string, unknown>
+): Record<string, unknown> {
+  const properties = inputSchema?.properties;
+  const declaredKeys = properties && typeof properties === 'object' && !Array.isArray(properties)
+    ? Object.keys(properties as Record<string, unknown>)
+    : [];
+  if (declaredKeys.length === 0) return {};
+  if (inputSchema?.additionalProperties === false) {
+    const filtered: Record<string, unknown> = {};
+    for (const key of declaredKeys) {
+      if (Object.prototype.hasOwnProperty.call(argumentsObject, key)) filtered[key] = argumentsObject[key];
+    }
+    return filtered;
+  }
+  return argumentsObject;
+}
+
 export function clearMcpToolCatalogCacheForTests() {
   mcpToolCatalogCache.clear();
+  mcpToolCatalogFailureCache.clear();
 }
 
 export async function invokeMcpTool(args: {
@@ -426,14 +491,15 @@ export async function invokeMcpTool(args: {
     isActive: true
   };
   const timeoutMs = normalizeTimeoutMs(args.timeoutSeconds);
+  const safeArguments = filterMcpToolArguments(args.tool.inputSchema, args.argumentsObject);
 
   return server.transport === 'sse'
-    ? await callToolViaLegacySse(args.tool, args.argumentsObject, {
+    ? await callToolViaLegacySse(args.tool, safeArguments, {
         server,
         timeoutMs,
         fetchImpl: args.fetchImpl
       })
-    : await callToolViaStreamableHttp(args.tool, args.argumentsObject, {
+    : await callToolViaStreamableHttp(args.tool, safeArguments, {
         server,
         timeoutMs,
         fetchImpl: args.fetchImpl

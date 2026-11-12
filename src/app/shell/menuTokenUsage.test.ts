@@ -172,6 +172,40 @@ function requestEntry(seed: {
   };
 }
 
+describe('summarizeMenuTokenUsage 历史缓存重算', () => {
+  it('缓存读比输入大时把总数补回去，历史数据也能纠正', () => {
+    const conversations: Conversation[] = [{
+      id: 'c-legacy',
+      title: '旧记录',
+      collaboratorId: 'p-1',
+      activeProjectId: null,
+      pinnedAt: null,
+      updatedAt: 2,
+      messages: [{
+        id: 'a-1',
+        role: 'assistant',
+        content: 'reply',
+        timestamp: 2,
+        tokenUsage: {
+          totalTokens: 53541,
+          inputTokens: 2684,
+          outputTokens: 78,
+          cachedInputTokens: 50751,
+          cacheMissInputTokens: 0,
+          cacheCreationInputTokens: 28
+        }
+      }]
+    }];
+
+    const summary = summarizeMenuTokenUsage(conversations);
+
+    // 2684 + 50751 + 28 = 53463（53541 那个总数里还含 78 个输出 token）
+    expect(summary.inputTokens).toBe(53463);
+    expect(summary.cacheMissInputTokens).toBe(2684);
+    expect(summary.cachedInputTokens).toBe(50751);
+  });
+});
+
 describe('summarizeMenuTokenUsage', () => {
   it('sums assistant token and cache usage from saved messages', () => {
     const conversations: Conversation[] = [{

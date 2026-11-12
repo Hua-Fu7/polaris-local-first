@@ -57,6 +57,10 @@ export function RoomSettingsTab({
   });
   const roomName = activePersona?.name.trim() || t('room.settings.fallbackName');
   const showChatAvatars = themeBindings.customization.showChatAvatars;
+  const showCollaboratorName = themeBindings.customization.showCollaboratorName ?? true;
+  const showMessageClock = themeBindings.customization.showMessageClock ?? true;
+  const showModelName = themeBindings.customization.showModelName ?? true;
+  const showTokenUsage = themeBindings.customization.showTokenUsage ?? true;
   const canEditAvatars = Boolean(activePersona && onSelectPersonaAvatar && onSetPersonaAvatarIcon && onSetPersonaAvatarShape && onSetPersonaAvatarSize);
 
   return (
@@ -121,6 +125,36 @@ export function RoomSettingsTab({
                 </div>
               </div>
             ) : null}
+          </section>
+
+          <section className="theme-studio-section room-toggle-section room-display-settings">
+            <PersonaToggle
+              label={t('room.settings.showClock')}
+              description={t('room.settings.showClockDetail')}
+              checked={showMessageClock}
+              onToggle={() => themeBindings.setCustomization({ showMessageClock: !showMessageClock })}
+            />
+
+            <PersonaToggle
+              label={t('room.settings.showCollaboratorName')}
+              description={t('room.settings.showCollaboratorNameDetail')}
+              checked={showCollaboratorName}
+              onToggle={() => themeBindings.setCustomization({ showCollaboratorName: !showCollaboratorName })}
+            />
+
+            <PersonaToggle
+              label={t('room.settings.showModel')}
+              description={t('room.settings.showModelDetail')}
+              checked={showModelName}
+              onToggle={() => themeBindings.setCustomization({ showModelName: !showModelName })}
+            />
+
+            <PersonaToggle
+              label={t('room.settings.showTokenUsage')}
+              description={t('room.settings.showTokenUsageDetail')}
+              checked={showTokenUsage}
+              onToggle={() => themeBindings.setCustomization({ showTokenUsage: !showTokenUsage })}
+            />
           </section>
 
           <RoomBackgroundSettingsSection

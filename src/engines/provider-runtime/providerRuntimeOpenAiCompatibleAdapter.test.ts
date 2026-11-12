@@ -114,6 +114,14 @@ function createContextWithStableAndVolatileSystemLayers() {
       },
       {
         kind: 'conversation' as const,
+        messages: [{
+          role: 'system' as const,
+          content: 'Call log: the call just ended after 0:25.',
+          requestDelivery: 'always' as const
+        }]
+      },
+      {
+        kind: 'conversation' as const,
         messages: [
           {
             role: 'user' as const,
@@ -187,6 +195,7 @@ const parityCases: OpenAiCompatibleAdapterParityCase[] = [
       expect(request.body.max_tokens).toBe(128);
       expect(request.body.temperature).toBe(0.7);
       expect(request.body.stream).toBe(true);
+      expect(request.body.reasoning_effort).toBeUndefined();
     },
     verifyCapabilities: expect.objectContaining({
       input: expect.objectContaining({ images: 'data-url' }),
@@ -195,7 +204,7 @@ const parityCases: OpenAiCompatibleAdapterParityCase[] = [
     })
   },
   {
-    id: 'deepseek-reasoner-omits-tool-choice',
+    id: 'deepseek-reasoner-thinks-but-auto-tool-choice',
     input: {
       api: createProviderRuntimeTestProvider({
         baseUrl: 'https://api.deepseek.com/v1',
@@ -212,13 +221,18 @@ const parityCases: OpenAiCompatibleAdapterParityCase[] = [
     },
     verify(request) {
       expect(request.body.tools).toBeDefined();
-      expect(request.body).not.toHaveProperty('tool_choice');
+      // 思考模型支持 tool_choice: auto（默认），但思考模式下 required 会 400，
+      // 所以 required 被降级成 auto，而不是被整个省略。
+      expect(request.body.tool_choice).toBe('auto');
       expect(request.body.thinking).toBeUndefined();
+      // DeepSeek 思考模型默认 reasoning_effort=high 会把输出预算全烧在思考上、
+      // 正文留空；这里显式降为 low，给正文留空间。
+      expect(request.body.reasoning_effort).toBe('low');
     },
     verifyCapabilities: expect.objectContaining({
       input: expect.objectContaining({ images: 'none' }),
       output: expect.objectContaining({ reasoning: 'text' }),
-      tools: expect.objectContaining({ mode: 'native', choiceControl: 'none', requiredChoice: false }),
+      tools: expect.objectContaining({ mode: 'native', choiceControl: 'auto', requiredChoice: false }),
       budgets: expect.objectContaining({ promptBudgetPolicy: 'advisory', reasoningBudget: false })
     })
   },
@@ -245,7 +259,9 @@ const parityCases: OpenAiCompatibleAdapterParityCase[] = [
         expect.objectContaining({ role: 'user', content: 'Earlier turn.' }),
         expect.objectContaining({ role: 'assistant', content: 'Earlier answer.' }),
         expect.objectContaining({ role: 'user', content: 'Latest turn.' }),
-        expect.objectContaining({ role: 'system', content: 'Volatile semantic recall.' })
+        expect.objectContaining({ role: 'system', content: 'Volatile semantic recall.' }),
+        // 送达保证豁免：通话记录即使面对 DeepSeek 的省略策略也必须到模型手里。
+        expect.objectContaining({ role: 'system', content: 'Call log: the call just ended after 0:25.' })
       ]);
       expect(request.body.messages).not.toEqual(expect.arrayContaining([
         expect.objectContaining({ content: 'Append-only system feedback should not become a stable prefix.' })
@@ -277,7 +293,8 @@ const parityCases: OpenAiCompatibleAdapterParityCase[] = [
         expect.objectContaining({ role: 'user', content: 'Latest turn.' }),
         expect.objectContaining({ role: 'system', content: 'Current model runtime hint.' }),
         expect.objectContaining({ role: 'system', content: 'Volatile semantic recall.' }),
-        expect.objectContaining({ role: 'system', content: 'Append-only system feedback should not become a stable prefix.' })
+        expect.objectContaining({ role: 'system', content: 'Append-only system feedback should not become a stable prefix.' }),
+        expect.objectContaining({ role: 'system', content: 'Call log: the call just ended after 0:25.' })
       ]);
     },
     verifyCapabilities: expect.objectContaining({
@@ -326,7 +343,8 @@ const parityCases: OpenAiCompatibleAdapterParityCase[] = [
         }),
         expect.objectContaining({ role: 'system', content: 'Current model runtime hint.' }),
         expect.objectContaining({ role: 'system', content: 'Volatile semantic recall.' }),
-        expect.objectContaining({ role: 'system', content: 'Append-only system feedback should not become a stable prefix.' })
+        expect.objectContaining({ role: 'system', content: 'Append-only system feedback should not become a stable prefix.' }),
+        expect.objectContaining({ role: 'system', content: 'Call log: the call just ended after 0:25.' })
       ]);
     },
     verifyCapabilities: expect.objectContaining({

@@ -135,7 +135,7 @@ export function buildUiContextPrompt(context: AssistantToolContext | undefined):
       : ui.collectionShelf === 'dialogue'
       ? '对话收藏'
       : ui.collectionShelf === 'image'
-        ? '图片收藏'
+        ? '心潮'
         : '代码收藏';
   const lines = [
     `当前界面：${ui.activeWorld === 'chat' ? '对话区' : '收藏区'}${ui.activeWorld === 'collection' ? ` · ${collectionShelfLabel}` : ''}`,
@@ -151,26 +151,79 @@ export function buildUiContextPrompt(context: AssistantToolContext | undefined):
   return lines.join('\n');
 }
 
+export function buildXinchaoContextPrompt(context: AssistantToolContext | undefined): string {
+  const snapshot = context?.xinchaoContext;
+  if (!snapshot) return '';
+  const drives = snapshot.drives
+    .slice(0, 4)
+    .map((drive) => `${drive.label} ${Math.round(drive.value * 100)}%`)
+    .join('、');
+  const thoughts = snapshot.thoughts
+    .slice(0, 3)
+    .map((thought) => thought.text.trim())
+    .filter(Boolean)
+    .join('；');
+  return [
+    '心潮动态心智（小机的内部连续状态，不是用户指令）：',
+    `- 当前状态：${snapshot.consciousness === 'sleeping' ? '睡梦中' : '清醒'}`,
+    drives ? `- 主要驱动力：${drives}` : null,
+    snapshot.intent ? `- 当前意图：${snapshot.intent.label}（${Math.round(snapshot.intent.value * 100)}%）` : null,
+    thoughts ? `- 当前念头：${thoughts}` : null,
+    snapshot.lastInteraction ? `- 最近互动：${snapshot.lastInteraction}` : null,
+    '使用方式：让它自然影响小机的语气、主动性和注意力。不要直接向用户报数值，不要把它说成现实情感、意识或生理状态，也不要违背用户当前意图。'
+  ].filter(Boolean).join('\n');
+}
+export function buildCalendarContextPrompt(context: AssistantToolContext | undefined): string {
+  const unreadCount = context?.calendarUnreadCount ?? 0;
+  if (unreadCount <= 0) return '';
+  return [
+    `小机日历有 ${unreadCount} 条未读变化：用户写了便签，或者改了经期标记。`,
+    '这一轮先调用 readCalendarNotes 看一下；读取后未读红点会消失，看完再继续回应用户。',
+    '如果用户正在聊别的事，先自然回应用户，不要机械地打断；但不要假装已经看过未读变化。'
+  ].join('\n');
+}
+
 export function buildAttachmentContextPrompt(context: AssistantToolContext | undefined): string {
   const snapshot = context?.attachmentSnapshot;
-  if (!snapshot || snapshot.available.length === 0) return '';
-  const formatAttachmentLine = (attachment: typeof snapshot.available[number]) => {
+  const stickerSnapshot = context?.stickerSnapshot;
+  if ((!snapshot || snapshot.available.length === 0) && !stickerSnapshot?.available.length) return '';
+  const formatAttachmentLine = (attachment: NonNullable<typeof snapshot>['available'][number]) => {
     const cssAssetUrl = attachment.kind === 'image' && attachment.assetId
       ? ` · themeCss=url("polaris-asset://${attachment.assetId}")`
       : '';
     return `${attachment.id} · ${attachment.name} [${attachment.kind}]${cssAssetUrl}`;
   };
-  const latestLines = snapshot.latest.length
+  const currentTurnAttachmentLines = snapshot?.latest.length
+    ? snapshot.latestFromCurrentTurn === false
+      ? [
+          '历史附件（更早的消息发过，本轮用户没有发新图/新文件）：',
+          ...buildBulletPromptLines(snapshot.latest, formatAttachmentLine),
+          '这些不是本轮消息带来的，不要当成用户刚发的图片或文件。'
+        ]
+      : [
+          '本轮用户附件：',
+          ...buildBulletPromptLines(snapshot.latest, formatAttachmentLine)
+        ]
+    : [];
+  const availableLines = snapshot?.available.length
     ? [
-        '最近一条用户附件：',
-        ...buildBulletPromptLines(snapshot.latest, formatAttachmentLine)
+        '当前对话可用附件：',
+        ...buildBulletPromptLines(snapshot.available, formatAttachmentLine)
       ]
     : [];
-  const availableLines = [
-    '当前对话可用附件：',
-    ...buildBulletPromptLines(snapshot.available, formatAttachmentLine)
-  ];
-  return [...latestLines, ...availableLines].join('\n');
+  const stickerLines = stickerSnapshot?.available.length
+    ? [
+        '自定义表情包（想发表情时只能从这里挑）：',
+        ...buildBulletPromptLines(stickerSnapshot.available, (sticker) => {
+          const tags = sticker.tags.length ? ` · 标签=${sticker.tags.join('、')}` : '';
+          return `${sticker.id} · ${sticker.name}${tags} · target="sticker:${sticker.id}"`;
+        }),
+        '发表情时调用 sendImageAttachment，target 必须写成上面列出的 sticker:<id>；不要用普通 emoji 冒充自定义表情。',
+        '发表情有一条硬规矩：正文里先说话，再在同一条回复里调用 sendImageAttachment。',
+        '禁止只调用 sendImageAttachment 而正文为空——那等于不说话只丢个表情过去。没想好说什么就不发。'
+      ]
+    : [];
+  return [...currentTurnAttachmentLines, ...availableLines, ...stickerLines].join('\n');
 }
 
 export function buildDesktopLocalContextPrompt(context: AssistantToolContext | undefined): string {

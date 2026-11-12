@@ -94,6 +94,7 @@
   border-color: transparent;
   background: transparent;
   color: var(--accent);
+  transform: none;
 }
 .message-inline-actions .micro-action-btn:focus-visible {
   border-color: transparent;
@@ -101,6 +102,7 @@
   color: var(--accent);
   outline: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
   outline-offset: 2px;
+  transform: none;
 }
 .message-inline-actions .micro-action-btn.active {
   border-color: transparent;
@@ -111,42 +113,37 @@
   width: 30px;
   height: 30px;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--border) 34%, transparent);
-  background:
-    radial-gradient(circle at 28% 18%, color-mix(in srgb, var(--surface-solid) 72%, transparent), transparent 58%),
-    color-mix(in srgb, var(--surface-muted) 68%, rgba(255,255,255,0.34));
-  color: color-mix(in srgb, var(--text-soft) 72%, var(--text-muted) 28%);
-  box-shadow:
-    0 8px 18px color-mix(in srgb, var(--accent-soft) 5%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--surface-solid) 64%, transparent);
+  border: none;
+  background: transparent;
+  color: color-mix(in srgb, var(--text-soft) 62%, var(--text-muted) 38%);
+  box-shadow: none;
 }
 .message-inline-actions.assistant .micro-action-btn:hover,
 .message-inline-actions.assistant .micro-action-btn:focus-visible {
-  border-color: color-mix(in srgb, var(--accent-soft) 32%, var(--border) 68%);
-  background:
-    radial-gradient(circle at 28% 18%, color-mix(in srgb, var(--surface-solid) 84%, transparent), transparent 58%),
-    color-mix(in srgb, var(--surface-muted) 78%, rgba(255,255,255,0.42));
-  color: color-mix(in srgb, var(--accent) 80%, var(--text-soft) 20%);
-  box-shadow:
-    0 10px 22px color-mix(in srgb, var(--accent-soft) 8%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--surface-solid) 72%, transparent);
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent);
+  box-shadow: none;
+  transform: none;
 }
 .message-inline-actions.assistant .micro-action-btn.active {
-  border-color: color-mix(in srgb, var(--accent-soft) 38%, var(--border) 62%);
-  background: color-mix(in srgb, var(--accent-soft) 11%, var(--surface-solid) 89%);
+  border-color: transparent;
+  background: transparent;
   color: color-mix(in srgb, var(--accent) 88%, var(--text) 12%);
+  box-shadow: none;
 }
 .message-inline-actions.assistant .micro-action-btn.task-receipt.completed {
-  border-color: color-mix(in srgb, #9fd8ab 46%, transparent);
-  background:
-    radial-gradient(circle at 30% 18%, color-mix(in srgb, #e8f8ed 72%, transparent), transparent 62%),
-    color-mix(in srgb, #d8f4df 44%, var(--surface-solid) 56%);
+  border-color: transparent;
+  background: transparent;
   color: #2f6b43;
+  box-shadow: none;
   animation: taskReceiptCheckIn 380ms ease both;
 }
 .message-inline-actions.assistant .micro-action-btn.task-receipt.blocked {
-  border-color: color-mix(in srgb, #e9be84 48%, transparent);
+  border-color: transparent;
+  background: transparent;
   color: #8f5b1d;
+  box-shadow: none;
 }
 .message-inline-actions.assistant .micro-action-btn.task-receipt.running svg {
   transform-box: view-box;
@@ -389,7 +386,13 @@ html[data-native-keyboard-overlay='true'][data-keyboard-open='true'] .assistant-
   backdrop-filter: blur(16px);
   cursor: pointer;
   z-index: 4;
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease, opacity 260ms ease;
+}
+/* 静置两秒后淡出（见 useIdleFade）：摸一下屏幕立刻回来。 */
+.chat-jump-latest-btn.idle-faded {
+  opacity: 0;
+  transform: translateY(6px) scale(0.94);
+  pointer-events: none;
 }
 .task-runtime-fab {
   border: 1px solid color-mix(in srgb, var(--border-hover) 68%, transparent);
@@ -488,7 +491,18 @@ html[data-native-keyboard-overlay='true'][data-keyboard-open='true'] .assistant-
 
 .tool-event { width: min(100%, 332px); padding: 7px 10px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--border) 22%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 10%, transparent) 0%, color-mix(in srgb, var(--surface) 5%, transparent) 100%); box-shadow: 0 8px 18px color-mix(in srgb, var(--accent-soft) 4%, transparent); backdrop-filter: blur(14px) saturate(1.02); display: flex; flex-direction: column; align-items: stretch; gap: 8px; transform-origin: bottom left; transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out), box-shadow 180ms ease, background 180ms ease, border-color 180ms ease; will-change: opacity, transform; }
 .tool-event.appearing { opacity: 0; transform: translateY(10px) scale(0.985); }
-.tool-event.collapsed { width: fit-content; max-width: min(100%, 332px); padding: 4px 9px; border-radius: 999px; border-color: color-mix(in srgb, var(--border) 18%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 7%, transparent) 0%, color-mix(in srgb, var(--surface) 3%, transparent) 100%); box-shadow: 0 4px 10px color-mix(in srgb, var(--accent-soft) 2%, transparent); }
+/* 折叠态就是一行日志：图标 + 文字 + 箭头，不再套一层气泡。
+   工具回执每一轮都有，做成气泡会跟真正的话抢视线。 */
+.tool-event.collapsed {
+  width: fit-content;
+  max-width: min(100%, 332px);
+  padding: 0;
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
 .tool-event.expanded { width: min(100%, 620px); padding: 9px 11px; border-color: color-mix(in srgb, var(--border) 28%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 13%, transparent) 0%, color-mix(in srgb, var(--surface) 7%, transparent) 100%); }
 .tool-event.tool-event--sandbox.expanded { width: min(100%, 620px); max-width: min(100%, 620px); gap: 6px; }
 .tool-event.running { border-color: color-mix(in srgb, var(--border-hover) 34%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 12%, transparent) 0%, color-mix(in srgb, var(--surface) 7%, transparent) 100%); }
@@ -502,10 +516,22 @@ html[data-native-keyboard-overlay='true'][data-keyboard-open='true'] .assistant-
 .tool-event.collapsed .tool-event-compact { gap: 6px; }
 .tool-event-expanded { min-width: 0; display: flex; }
 .tool-event-icon { width: 24px; height: 24px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: color-mix(in srgb, var(--accent-soft) 22%, transparent); color: color-mix(in srgb, var(--accent) 88%, var(--text-soft) 12%); }
-.tool-event.collapsed .tool-event-icon { width: 20px; height: 20px; background: color-mix(in srgb, var(--accent-soft) 18%, transparent); }
+.tool-event.collapsed .tool-event-icon { width: 20px; height: 20px; border-radius: 0; background: transparent; color: color-mix(in srgb, var(--accent) 72%, var(--text-soft) 28%); }
 .tool-event-icon.running { animation: softPulse 1.2s ease-in-out infinite; }
 .tool-event-icon.applied { background: rgba(92, 158, 136, 0.12); color: #4c8b76; }
 .tool-event-icon.failed { background: rgba(220, 101, 101, 0.1); color: #c45d5d; }
+/* 折叠态保持一行日志：状态色只留在图标和文字上，不再画背景/描边。 */
+.tool-event.collapsed.running,
+.tool-event.collapsed.applied,
+.tool-event.collapsed.failed,
+.tool-event.collapsed.preview,
+.tool-event.collapsed.superseded {
+  border-color: transparent;
+  background: transparent;
+}
+.tool-event.collapsed .tool-event-icon.applied,
+.tool-event.collapsed .tool-event-icon.running { background: transparent; }
+.tool-event.collapsed .tool-event-icon.failed { background: transparent; color: #c45d5d; }
 .tool-event-compact-copy, .tool-event-copy { min-width: 0; display: flex; flex-direction: column; gap: 3px; flex: 1; }
 .tool-event-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tool-event-title-row strong { font-size: var(--type-body); font-weight: 500; color: var(--text); }
@@ -546,7 +572,7 @@ html[data-native-keyboard-overlay='true'][data-keyboard-open='true'] .assistant-
 .tool-event-memory-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .tool-event-memory-list span { padding: 4px 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent-soft) 24%, transparent); color: var(--text-soft); font-size: 10px; line-height: 1.4; }
 .tool-event-toggle { width: 24px; height: 24px; flex: 0 0 auto; border: 1px solid color-mix(in srgb, var(--border) 18%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--surface) 10%, transparent); color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
-.tool-event.collapsed .tool-event-toggle { width: 20px; height: 20px; border-color: color-mix(in srgb, var(--border) 14%, transparent); background: color-mix(in srgb, var(--surface) 7%, transparent); }
+.tool-event.collapsed .tool-event-toggle { width: 20px; height: 20px; border-color: transparent; background: transparent; }
 .tool-event-actions { display: flex; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; }
 .tool-event.tool-event--sandbox .tool-event-actions { justify-content: flex-start; }
 .tool-event.tool-event--sandbox .tool-btn.compact { flex: 0 0 auto; min-height: 34px; padding: 7px 12px; }
@@ -583,30 +609,30 @@ html[data-native-keyboard-overlay='true'][data-keyboard-open='true'] .assistant-
   margin-bottom: 0;
 }
 .thinking-inline-trigger {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid color-mix(in srgb, var(--border) 22%, transparent);
+  min-height: 24px;
+  padding: 3px 9px 3px 8px;
+  gap: 6px;
+  border: none;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 10%, transparent);
+  background: transparent;
   color: color-mix(in srgb, var(--text-muted) 80%, var(--text-soft) 20%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 6px 14px color-mix(in srgb, var(--accent-soft) 4%, transparent);
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
+  box-shadow: none;
+  transition: color 160ms ease;
 }
 .thinking-inline-trigger:hover,
 .thinking-inline-trigger:focus-visible {
-  border-color: color-mix(in srgb, var(--border-hover) 38%, transparent);
-  background: color-mix(in srgb, var(--surface) 14%, transparent);
+  border-color: transparent;
+  background: transparent;
   color: var(--text-soft);
-  transform: translateY(-1px);
 }
 .thinking-inline-trigger.active {
-  border-color: color-mix(in srgb, var(--border-hover) 42%, transparent);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--surface) 14%, transparent), color-mix(in srgb, var(--accent-soft) 10%, transparent));
+  border-color: transparent;
+  background: transparent;
+  color: color-mix(in srgb, var(--accent) 58%, var(--text-soft) 42%);
 }
 .thinking-inline-icon {
   display: inline-flex;
@@ -622,8 +648,185 @@ html[data-native-keyboard-overlay='true'][data-keyboard-open='true'] .assistant-
 .thinking-inline-icon.spinning {
   animation: thinkingOrbitSpin 1.4s linear infinite;
 }
+.thinking-inline-icon.has-activity {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  overflow: visible;
+}
+.thinking-inline-icon.has-activity > svg {
+  transform: translateX(-1px);
+}
+/* 放大镜的把手默认朝右下，正好被右下角的小时钟角标盖住，看起来像个 Q。
+   把放大镜本体水平镜像，把手改朝左下，角标留在右下，两者都不打架。 */
+.thinking-inline-icon.has-activity.is-search > svg {
+  transform: translateX(-1px) scaleX(-1);
+}
+.thinking-inline-activity-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border-hover) 62%, transparent);
+  background: var(--surface-solid);
+  color: color-mix(in srgb, var(--accent) 58%, var(--text-soft) 42%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(10, 14, 28, 0.14);
+}
+.thinking-inline-activity-badge.spinning {
+  animation: thinkingOrbitSpin 1.4s linear infinite;
+}
+.thinking-inline-label {
+  min-width: 0;
+  max-width: min(64vw, 380px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+/* 状态条：进行中让高光从左往右扫过文字，换一段活动时轻轻弹一下。 */
+.thinking-inline-label.is-live {
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--text-muted) 88%, transparent) 40%,
+    color-mix(in srgb, var(--text-soft) 96%, transparent) 50%,
+    color-mix(in srgb, var(--text-muted) 88%, transparent) 60%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation:
+    thinkingStatusSweep 1.6s linear infinite,
+    thinkingStatusPop 240ms var(--ease-out);
+}
+@keyframes thinkingStatusSweep {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}
+@keyframes thinkingStatusPop {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thinking-inline-label.is-live { animation: none; }
+}
+.thinking-inline-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in srgb, var(--text-muted) 70%, transparent);
+  transition: transform 160ms ease;
+}
+.thinking-inline-trigger:hover .thinking-inline-chevron,
+.thinking-inline-trigger:focus-visible .thinking-inline-chevron {
+  transform: translateX(1px);
+}
+/* 就地展开状态：小角从 > 转成 ∨（active 是"正在思考"，不是展开） */
+.thinking-inline-trigger.is-open .thinking-inline-chevron {
+  transform: rotate(90deg);
+}
 .tool-event-live-summary { display: inline-flex; align-items: center; gap: 7px; }
 .tool-event-live-dots { display: inline-flex; gap: 4px; }
 .tool-event-live-dots span { width: 4px; height: 4px; border-radius: 999px; background: currentColor; opacity: 0.28; animation: softPulse 1.2s ease-in-out infinite; }
 .tool-event-live-dots span:nth-child(2) { animation-delay: .15s; }
 .tool-event-live-dots span:nth-child(3) { animation-delay: .3s; }
+
+/* 无协作者名字时，Thinking 行撑满，箭头靠右但保留呼吸空间。 */
+.message-identity-row.thinking-only {
+  width: 100%;
+  padding-right: 12px;
+}
+
+.message-identity-row.thinking-only .thinking-inline-trigger {
+  flex: 1 1 auto;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.message-identity-row.thinking-only .thinking-inline-chevron {
+  margin-left: auto;
+}
+
+/* Thinking 时间线里的工具 / 搜索行：只留图标、文字和箭头。 */
+.message-thinking-inline .tool-event,
+.message-thinking-inline .tool-event.collapsed,
+.message-thinking-inline .tool-event.expanded,
+.message-thinking-inline .tool-event.tool-event--sandbox.expanded {
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  gap: 6px;
+  transform-origin: left center;
+}
+
+.message-thinking-inline .tool-event-compact {
+  gap: 8px;
+}
+
+.message-thinking-inline .tool-event-icon,
+.message-thinking-inline .tool-event.collapsed .tool-event-icon {
+  width: 18px;
+  height: 18px;
+  margin-left: -25px;
+  border-radius: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--accent) 50%, var(--text-soft) 50%);
+}
+
+.message-thinking-inline .tool-event-icon.failed {
+  background: transparent;
+  color: #c45d5d;
+}
+
+.message-thinking-inline .tool-event-summary,
+.message-thinking-inline .tool-event-title-row strong {
+  font-size: var(--type-caption);
+  font-weight: 400;
+  line-height: 1.68;
+  color: var(--text-soft);
+  letter-spacing: 0;
+}
+
+.message-thinking-inline .tool-event-status,
+.message-thinking-inline .tool-event-actions {
+  display: none;
+}
+
+.message-thinking-inline .tool-event-toggle,
+.message-thinking-inline .tool-event.collapsed .tool-event-toggle {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.message-thinking-inline .tool-event.expanded .tool-event-expanded {
+  margin-top: 7px;
+  padding: 1px 0 4px 1px;
+}
+
+.message-thinking-inline .tool-event-write-sandbox-band {
+  margin-inline: 0;
+}
+
+.message-thinking-inline .tool-event-live-dots span {
+  width: 3px;
+  height: 3px;
+}
+
+

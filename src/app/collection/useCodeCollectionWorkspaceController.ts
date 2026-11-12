@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { inferCodeLanguage, normalizeCodeCardTags, normalizeCodeLanguage } from '../../engines/codeCardEngine';
 import { filterCodeCardsForCollaboratorScope } from '../../engines/collectionOwnership';
 import { enterChatWorld } from '../shell/frontstageNavigation';
@@ -38,6 +38,8 @@ import { useChatStore } from '../../stores/chatStore';
 import { useCollectionStore } from '../../stores/collectionStore';
 import { usePersonaStore } from '../../stores/personaStore';
 import { useSpaceFrontstageBindings } from '../../stores/spaceStoreFrontstageBindings';
+import { useSpaceStore } from '../../stores/spaceStore';
+import type { CollectionShelf } from '../../types/domain';
 import type { CodeCard, ProjectFile, RoomProject, WorkspaceReferenceDoc, WorkspaceViewReturnTarget } from '../../types/domain';
 import { UNCATEGORIZED_CODE_TAG_FILTER, resolveRoomScopedTags, type CodeTagFilter } from './codeCollectionFilterModel';
 import { useCodeCollectionChatBridge } from './useCodeCollectionChatBridge';
@@ -68,6 +70,11 @@ export function useCodeCollectionWorkspaceController(args: {
   const { t } = useI18n();
   const frontstage = useSpaceFrontstageBindings();
   const cards = useCollectionStore((state) => state.cards);
+  const collectionShelf = useSpaceStore((state) => state.collectionShelf);
+  const setCollectionShelf = useSpaceStore((state) => state.setCollectionShelf);
+  // 从哪个页面点进工作区文件的——退出来的时候要回到那个页面，
+  // 不然会被丢到「工作区」列表里。
+  const returnShelfRef = useRef<CollectionShelf | null>(null);
   const projectFiles = useCollectionStore((state) => state.projectFiles);
   const workspaceReferenceDocs = useCollectionStore((state) => state.workspaceReferenceDocs);
   const roomProjects = useCollectionStore((state) => state.roomProjects);
@@ -138,6 +145,10 @@ export function useCodeCollectionWorkspaceController(args: {
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const closeWorkshop = () => {
     setWorkshopMode(null);
+    if (returnShelfRef.current) {
+      setCollectionShelf(returnShelfRef.current);
+      returnShelfRef.current = null;
+    }
     if (!activeProjectFileId) return;
     const targetFile = scopedProjectFiles.find((file) => file.id === activeProjectFileId) ?? null;
     setActiveProjectFileId(null);
@@ -358,6 +369,8 @@ export function useCodeCollectionWorkspaceController(args: {
   const openProjectFileEditor = (fileId: string) => {
     const projectFile = scopedProjectFiles.find((file) => file.id === fileId) ?? null;
     if (!projectFile) return;
+    if (collectionShelf !== 'project') returnShelfRef.current = collectionShelf;
+    console.log('[shelf-debug] open file', fileId, 'from', collectionShelf, 'return=', returnShelfRef.current);
 
     setActiveProjectId(projectFile.projectId);
     setActiveProjectFileId(projectFile.id);
@@ -592,6 +605,7 @@ export function useCodeCollectionWorkspaceController(args: {
   };
 
   const closeProject = () => {
+    console.log('[shelf-debug] closeProject, return=', returnShelfRef.current, 'shelf=', collectionShelf);
     setActiveProjectFileId(null);
     const returnTarget = projectReturnTarget;
     setProjectReturnTarget(null);
@@ -601,6 +615,12 @@ export function useCodeCollectionWorkspaceController(args: {
       setActiveConversation,
       setWorld: frontstage.setWorld
     });
+    // 从「文件」页点进来的工作区文件：关掉工作区要回到文件页，
+    // 而不是停在「工作区」列表（那是打开工作区的入口，不是我们来的地方）。
+    if (returnShelfRef.current) {
+      setCollectionShelf(returnShelfRef.current);
+      returnShelfRef.current = null;
+    }
   };
 
   const renameProject = (projectId: string, title: string) => {
@@ -923,6 +943,20 @@ export function useCodeCollectionWorkspaceController(args: {
     cards,
     standaloneCards,
     projectFiles,
+  /** 文件页里的「总和」：每个工作区文件 + 它属于哪个工作区，省得再去工作区翻。 */
+  workspaceFileRows: useMemo(
+    () => scopedProjectFiles.map((file) => {
+      const project = roomProjects.find((entry) => entry.id === file.projectId);
+      return {
+        fileId: file.id,
+        path: file.filePath,
+        language: file.language,
+        isEntry: file.fileRole === 'entry',
+        projectTitle: project?.title?.trim() || '工作区'
+      };
+    }),
+    [roomProjects, scopedProjectFiles]
+  ),
     workspaceReferenceDocs: scopedWorkspaceReferenceDocs,
     roomProjects: visibleRoomProjects,
     activeProject,

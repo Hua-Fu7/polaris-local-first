@@ -138,18 +138,6 @@
   to { transform: rotate(180deg); }
 }
 
-@keyframes startupStarTurn {
-  0% { transform: rotate(0deg) scale(var(--app-star-turn-scale-min, 0.92)); opacity: var(--app-star-turn-opacity-min, 0.78); }
-  14% { opacity: var(--app-star-turn-opacity-full, 1); }
-  58% { transform: rotate(360deg) scale(var(--app-star-turn-scale-full, 1)); opacity: var(--app-star-turn-opacity-full, 1); }
-  76% { transform: rotate(360deg) scale(var(--app-star-turn-scale-rest, 0.94)); opacity: var(--app-star-turn-opacity-rest, 0.86); }
-  100% { transform: rotate(360deg) scale(var(--app-star-turn-scale-min, 0.92)); opacity: var(--app-star-turn-opacity-min, 0.78); }
-}
-
-@keyframes startupStarBreath {
-  0%, 100% { transform: scale(0.78); opacity: 0.42; }
-  48% { transform: scale(1.18); opacity: 0.78; }
-}
 
 .topbar {
   animation: topbarDescent 0.5s var(--ease-out) 0.1s both;

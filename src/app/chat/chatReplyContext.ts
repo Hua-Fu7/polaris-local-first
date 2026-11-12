@@ -9,6 +9,7 @@ import { isGroupConversation } from '../../engines/conversationOwnership';
 import { buildRoomProjectTreeSnapshots } from '../../engines/roomProjects';
 import { getRunCodeSandboxProfile } from '../../infrastructure/runCodeSandboxMode';
 import { getNativePersonalDataToolAvailability } from '../../native/personalData';
+import { countCalendarUnreadChanges } from '../../engines/calendar/calendarInbox';
 import type {
   ChatAttachment,
   ChatMessage,
@@ -40,12 +41,27 @@ import type { RuntimeFeedbackEvent } from '../../engines/runtime-feedback/runtim
 import type { PendingWorkspaceProposalRecord } from '../../engines/workspaceBinding';
 import { resolveConversationTaskMode } from '../../engines/conversationTask';
 import { buildWorkContext } from '../../engines/workContext';
+import { buildXinchaoReplyContext } from '../../engines/xinchao/runtime';
+import { shouldInjectXinchaoContext } from '../../engines/xinchao/injection';
+import { getStickerPromptSnapshot } from '../../engines/stickers/stickerLibrary';
 
 function buildAttachmentSnapshot(messages: ChatMessage[]) {
   const available = messages.flatMap((message) => message.attachments?.filter((attachment) => !attachment.clearedAt) ?? []);
-  const latest = [...messages].reverse().find(
-    (message) => message.role === 'user' && (message.attachments?.some((attachment) => !attachment.clearedAt) ?? false)
-  )?.attachments?.filter((attachment) => !attachment.clearedAt) ?? [];
+  const hasLiveAttachments = (message: ChatMessage) =>
+    message.attachments?.some((attachment) => !attachment.clearedAt) ?? false;
+  const latestMessage = [...messages].reverse().find(
+    (message) => message.role === 'user' && hasLiveAttachments(message)
+  );
+  const latest = latestMessage?.attachments?.filter((attachment) => !attachment.clearedAt) ?? [];
+  // 本轮（最后一条用户消息）自己有没有带附件，决定这些附件是"刚发的"还是"历史里的"。
+  // 之前不区分，导致用户只发文字时模型仍以为刚收到过一张图。
+  const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user');
+  const latestFromCurrentTurn = Boolean(
+    lastUserMessage
+    && latestMessage
+    && lastUserMessage.id === latestMessage.id
+    && hasLiveAttachments(lastUserMessage)
+  );
   const toItem = (attachment: ChatAttachment) => ({
     id: attachment.id,
     assetId: attachment.assetId,
@@ -56,6 +72,7 @@ function buildAttachmentSnapshot(messages: ChatMessage[]) {
 
   return {
     latest: latest.map(toItem),
+    latestFromCurrentTurn,
     available: available.slice(-8).map(toItem)
   };
 }
@@ -236,10 +253,13 @@ export function buildReplyToolContext(args: {
   const visibleWorkspaceReferenceDocs = snapshot.workspaceReferenceDocs ?? [];
   const latestUserCardReference = findLatestUserCardReference(messages);
   const continueCardReference = findLatestUserContinueCardReference(messages);
-  const effectiveActiveCardId = latestUserCardReference?.id ?? snapshot.activeCardId;
+  // 只在用户**真的把卡片发给它**时才带上卡片。
+  // 以前"点开一张卡"就等于把它设成 ambient 塞进后面每一轮请求，
+  // 于是用户只是翻了一下文件，模型后面几轮却一直知道那张卡。
+  const effectiveActiveCardId = latestUserCardReference?.id ?? null;
   const activeCard = visibleCards.find((card) => card.id === effectiveActiveCardId) ?? null;
-  const activeCardReferenceMode: 'continue' | 'reference' | 'ambient' | undefined =
-    latestUserCardReference?.mode ?? (activeCard ? 'ambient' : undefined);
+  const activeCardReferenceMode: 'continue' | 'reference' | undefined =
+    latestUserCardReference?.mode;
   const visibleProjects = buildRoomProjectTreeSnapshots(
     snapshot.roomProjects,
     visibleProjectFiles,
@@ -294,6 +314,18 @@ export function buildReplyToolContext(args: {
     memoryVectorRetrieval: snapshot.memoryVectorRetrieval
   });
   const personalDataAvailability = getNativePersonalDataToolAvailability();
+  const xinchaoSnapshot = buildXinchaoReplyContext({
+    collaboratorId,
+    messages
+  });
+  // 心潮状态每轮都会算，但**没必要每轮都贴给模型**：
+  // 状态没变就跳过，变了（revision 变了）或者有驱力过了"涌"线才带上。
+  // 不这么做的话，模型每轮都被提醒一遍"你现在责任感 45%"，会一直念这件事。
+  const xinchaoContext = shouldInjectXinchaoContext({
+    collaboratorId,
+    conversationId: messages[messages.length - 1]?.id ?? '',
+    snapshot: xinchaoSnapshot
+  }) ? xinchaoSnapshot : undefined;
   const workContext = buildWorkContext({
     currentTask: snapshot.currentTask,
     messages,
@@ -331,9 +363,12 @@ export function buildReplyToolContext(args: {
         selectorHints: themeToolContext.selectorHints
       },
       attachmentSnapshot: buildAttachmentSnapshot(messages),
+      stickerSnapshot: getStickerPromptSnapshot(),
       imageAssetSnapshot: buildImageAssetSnapshot(visibleImageCards),
       imageGenerationAvailable,
       memorySearchAvailable,
+      xinchaoContext,
+      calendarUnreadCount: countCalendarUnreadChanges(collaboratorForReply?.id ?? 'default'),
       personalData: {
         calendarAvailable: personalDataAvailability.calendarAvailable,
         calendarWriteAvailable: personalDataAvailability.calendarWriteAvailable,

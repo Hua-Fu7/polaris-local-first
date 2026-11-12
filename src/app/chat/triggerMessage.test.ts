@@ -50,4 +50,31 @@ describe('createTriggerMessage', () => {
     expect(message.requestContent).not.toContain('主动唤醒事件');
     expect(message.requestContent).not.toContain('不要解释触发器');
   });
+
+  it('appends the decision layer direction as a labelled hint, not as a finished line', () => {
+    const message = createTriggerMessage(createRule(), null, '上次那个配色的对比度');
+
+    expect(message.requestContent).toBe('看看我今天状态\n\n本次主动开口的方向：上次那个配色的对比度');
+    expect(message.content).toBe('（定时唤醒：晚安）');
+  });
+
+  it('treats a blank decision direction as no direction at all', () => {
+    const message = createTriggerMessage(createRule(), null, '   ');
+
+    expect(message.requestContent).toBe('看看我今天状态');
+  });
+
+  it('keeps the wakeup prompt ahead of the decision direction', () => {
+    const event: RuntimeTriggerEvent = {
+      id: 'event-2',
+      ruleId: 'trigger-1',
+      prompt: '我刚到家',
+      source: 'notification',
+      receivedAt: 1000
+    };
+
+    const message = createTriggerMessage(createRule(), event, '问问他今天怎么样');
+
+    expect(message.requestContent).toBe('看看我今天状态\n\n本次主动开口的方向：问问他今天怎么样\n\n我刚到家');
+  });
 });

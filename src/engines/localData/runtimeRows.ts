@@ -10,6 +10,7 @@ import type {
   PolarisTriggerRule,
   ProviderProfile,
   VoiceGenerationSettings,
+  VoiceTranscriptionSettings,
   WebDavConfig,
   WebSearchConfig
 } from '../../types/domain';
@@ -58,6 +59,7 @@ export type RuntimeLocalDataState = {
   imageGeneration: ImageGenerationSettings;
   imageUnderstanding: ImageUnderstandingSettings;
   voiceGeneration: VoiceGenerationSettings;
+  voiceTranscription?: VoiceTranscriptionSettings;
   toolPromptPreferences: Record<PolarisToolPromptGroup, boolean>;
   taskModeEnabled: boolean;
   mcpServers: McpServerConfig[];
@@ -109,6 +111,7 @@ function buildRuntimeSettingsValue(state: RuntimeLocalDataState, updatedAt: numb
     imageGeneration: state.imageGeneration,
     imageUnderstanding: state.imageUnderstanding,
     voiceGeneration: state.voiceGeneration,
+    voiceTranscription: state.voiceTranscription,
     toolPromptPreferences: state.toolPromptPreferences,
     taskModeEnabled: state.taskModeEnabled,
     mcpToolTimeoutSeconds: state.mcpToolTimeoutSeconds,

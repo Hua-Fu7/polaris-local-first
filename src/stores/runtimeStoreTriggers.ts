@@ -42,9 +42,13 @@ export function normalizeRuntimeTriggerState(
 
 export function createRuntimeTriggerRule(seed: {
   name?: string;
+  mode?: PolarisTriggerRule['mode'];
   schedule: PolarisTriggerSchedule;
   target: PolarisTriggerTarget;
   action: PolarisTriggerAction;
+  proactiveSettings?: PolarisTriggerRule['proactiveSettings'];
+  sourceMessageId?: string;
+  nextRunAt?: number | null;
 }) {
   return createScheduledTriggerRule(seed);
 }
@@ -61,13 +65,21 @@ export function updateRuntimeTriggerRule(
     target: patch.target ?? rule.target,
     action: patch.action ?? rule.action,
     schedule,
-    nextRunAt: patch.nextRunAt ?? (patch.schedule ? resolveNextTriggerRunAt(schedule, now) : rule.nextRunAt),
+    nextRunAt: Object.prototype.hasOwnProperty.call(patch, 'nextRunAt')
+      ? patch.nextRunAt ?? null
+      : patch.schedule
+        ? resolveNextTriggerRunAt(schedule, now)
+        : rule.nextRunAt,
     updatedAt: now
   }])[0] ?? null;
 }
 
-export function markRuntimeTriggerFired(rule: PolarisTriggerRule, runAt = Date.now()) {
-  return advanceTriggerRuleAfterRun(rule, runAt);
+export function markRuntimeTriggerFired(
+  rule: PolarisTriggerRule,
+  runAt = Date.now(),
+  lastActivityAt?: number | null
+) {
+  return advanceTriggerRuleAfterRun(rule, runAt, lastActivityAt);
 }
 
 export function markRuntimeTriggerFailed(rule: PolarisTriggerRule, error: string, runAt = Date.now()) {

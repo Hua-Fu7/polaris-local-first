@@ -88,6 +88,16 @@ function createToolContext(overrides: Partial<ToolContext> = {}): ToolContext {
       detailText: 'ruleId=trigger-1',
       triggerRuleId: 'trigger-1'
     })),
+    startVoiceCall: vi.fn(() => ({
+      ok: true as const,
+      summary: '电话已经拨出去了',
+      detailText: '来电已经投给用户。'
+    })),
+    hangUp: vi.fn(() => ({
+      ok: true as const,
+      summary: '已挂断这通电话',
+      detailText: '通话已经结束。'
+    })),
     inspectAttachments: vi.fn(() => ({ ok: true as const, items: [], detailText: 'empty' })),
 	    webSearch: vi.fn(async () => ({
 	      ok: true as const,
@@ -286,6 +296,11 @@ function createToolContext(overrides: Partial<ToolContext> = {}): ToolContext {
         size: 10
       }),
       detailText: 'sent image'
+    })),
+    sendVoiceMessage: vi.fn(() => ({
+      ok: true as const,
+      summary: '已申请发语音 · 等用户点允许',
+      detailText: 'requested voice'
     })),
     inspectImageAsset: vi.fn(async () => ({
       ok: true as const,

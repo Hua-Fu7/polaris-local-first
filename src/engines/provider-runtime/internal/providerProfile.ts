@@ -116,6 +116,7 @@ function shouldCollapseSystemMessages(args: {
 function supportsRequiredToolChoice(args: {
   baseUrl: string;
   host: string;
+  modelId: string | undefined;
   protocol: ReturnType<typeof inferProviderProtocol>;
 }) {
   const trimmedBaseUrl = args.baseUrl.trim().toLowerCase();
@@ -124,6 +125,12 @@ function supportsRequiredToolChoice(args: {
   }
 
   if (args.protocol === 'openai-completions' || args.protocol === 'openai-responses') {
+    // DeepSeek 官方 API 支持 `tool_choice: required`（none/auto/required/指定工具名），
+    // 但**思考模型**（deepseek-reasoner / deepseek-v4 / deepseek-r1）不支持，
+    // 传 required 会 400。非思考模型（deepseek-chat 等）则完整支持。
+    if (isDeepSeekHost(args.host)) {
+      return !isDeepSeekThinkingModel(args.modelId);
+    }
     return isOpenAiHost(args.host);
   }
 
@@ -143,10 +150,11 @@ function supportsToolChoice(args: {
   modelId: string | undefined;
   protocol: ReturnType<typeof inferProviderProtocol>;
 }) {
-  if (args.protocol === 'openai-completions' && isDeepSeekHost(args.host)) {
-    return false;
-  }
-
+  // `tool_choice: auto` 对各家 OpenAI 兼容端点都是安全的（包括 DeepSeek）。
+  // 是否支持 `required` 由 supportsRequiredToolChoice 单独把关。
+  // 早期对 DeepSeek 一刀切禁掉，是因为 deepseek-reasoner 不支持 function calling；
+  // 现在 deepseek-chat / deepseek-v4 都完整支持了，不再禁用。
+  void args;
   return true;
 }
 
@@ -405,6 +413,7 @@ export function resolveProviderProfile(
     supportsRequiredToolChoice: toolChoiceSupported && supportsRequiredToolChoice({
       baseUrl: api.baseUrl,
       host,
+      modelId: api.model,
       protocol
     }),
     contextWindowTokens: promptBudget.contextWindowTokens,

@@ -9,6 +9,9 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(SystemFilePlugin.class);
         registerPlugin(LocalDataSqlitePlugin.class);
         registerPlugin(NativeProviderHttpPlugin.class);
+        registerPlugin(ObSecretStorePlugin.class);
+        registerPlugin(PolarisTriggerAlarmPlugin.class);
+        registerPlugin(VoiceCallRecorderPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

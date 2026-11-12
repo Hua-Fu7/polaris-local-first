@@ -226,6 +226,16 @@ export function compactToolEventSummary(tool: ToolInvocation, t?: ToolLabelTrans
   if (tool.kind === 'invokeCodeCardTool' && tool.status === 'executed') {
     return tool.targetLabel?.trim() || tool.toolName?.trim() || localizeToolLabel(t, 'chat.toolEvent.fallback.toolCardCalled', '已调用工具卡');
   }
+  if (tool.kind === 'webSearch' && tool.status === 'executed' && tool.webSearch) {
+    const count = tool.webSearch.results.length;
+    const provider = tool.webSearch.provider.trim();
+    return localizeToolLabel(
+      t,
+      'chat.toolEvent.webSearchResults',
+      provider ? `已找到 ${count} 条网页结果 · ${provider}` : `已找到 ${count} 条网页结果`,
+      { count, provider }
+    );
+  }
   if (tool.kind === 'startTask' && tool.status === 'executed') {
     return tool.targetLabel?.trim() || localizeToolLabel(t, 'chat.toolEvent.fallback.taskStarted', '已开启任务');
   }
@@ -234,3 +244,5 @@ export function compactToolEventSummary(tool: ToolInvocation, t?: ToolLabelTrans
   }
   return tool.summary;
 }
+
+

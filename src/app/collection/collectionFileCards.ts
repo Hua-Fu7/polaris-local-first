@@ -55,6 +55,16 @@ function toFileCard(
   };
 }
 
+/**
+ * 语音条的 mp3 不算「我发的附件」：它是我说/它说的一句话，不是文件。
+ */
+function isVoiceMessageAttachment(attachment: ChatAttachment) {
+  const mime = (attachment.mimeType ?? '').toLowerCase();
+  if (mime.startsWith('audio/')) return true;
+  const name = (attachment.name ?? '').toLowerCase();
+  return name.endsWith('.mp3') || name.endsWith('.m4a') || name.endsWith('.aac') || name.endsWith('.wav');
+}
+
 export function buildCollectionFileCards(params: {
   conversations: Conversation[];
   collaboratorScopeId?: string | null;
@@ -70,7 +80,11 @@ export function buildCollectionFileCards(params: {
 
     return conversation.messages.flatMap((message) => (
       (message.attachments ?? [])
-        .filter((attachment) => attachment.kind === 'file' && !attachment.clearedAt)
+        .filter((attachment) => (
+          attachment.kind === 'file'
+          && !attachment.clearedAt
+          && !isVoiceMessageAttachment(attachment)
+        ))
         .map((attachment) => toFileCard(conversation, message.id, attachment, message.timestamp))
     ));
   });

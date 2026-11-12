@@ -9,9 +9,9 @@ export type CollectionShelfNavItem = {
 export type CollectionShelfAvailability = Partial<Record<CollectionShelf, boolean>>;
 
 const COLLECTION_SHELF_NAV_ITEM_IDS: CollectionShelf[] = [
-  'dialogue',
-  'project',
   'code',
+  'project',
+  'dialogue',
   'image',
   'info'
 ];
@@ -20,7 +20,7 @@ function collectionShelfLabel(shelf: CollectionShelf, t: I18nTranslator['t']) {
   if (shelf === 'dialogue') return t('collection.nav.dialogue');
   if (shelf === 'project') return t('collection.nav.project');
   if (shelf === 'code') return t('collection.nav.code');
-  if (shelf === 'image') return t('collection.nav.image');
+  if (shelf === 'image') return '心潮';
   return t('collection.nav.info');
 }
 

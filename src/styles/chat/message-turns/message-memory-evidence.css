@@ -165,3 +165,78 @@
   line-height: 1.62;
   word-break: break-word;
 }
+
+/* ── OB 召回标记 ── */
+.ob-recall-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-solid) 70%, transparent);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: var(--type-caption);
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.ob-recall-chip:hover,
+.ob-recall-chip.active {
+  border-color: color-mix(in srgb, var(--border-hover) 88%, transparent);
+  color: var(--text-soft);
+}
+
+/* 失败要看得见，但这不是 App 出错，是"这一轮没召回成"。 */
+.ob-recall-chip.is-failed {
+  border-color: color-mix(in srgb, var(--color-error) 38%, transparent);
+  color: var(--color-error);
+}
+
+.ob-recall-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ob-recall-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ob-recall-name {
+  color: var(--text);
+  font-size: var(--type-small);
+  font-weight: 600;
+}
+
+.ob-recall-score {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface-deep);
+  color: var(--text-muted);
+  font-size: var(--type-micro);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.ob-recall-excerpt {
+  color: var(--text-soft);
+  font-size: var(--type-small);
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.ob-recall-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-small);
+  line-height: 1.55;
+}

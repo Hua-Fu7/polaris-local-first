@@ -26,24 +26,31 @@ function compactUsage(usage: ChatTokenUsage): ChatTokenUsage | undefined {
 function parseAnthropicUsage(rawUsage: unknown): ChatTokenUsage | undefined {
   const usage = readObject(rawUsage);
   if (!usage) return undefined;
-  const inputTokens = readNumber(usage.input_tokens);
+  const uncachedInputTokens = readNumber(usage.input_tokens);
   const outputTokens = readNumber(usage.output_tokens);
   const cachedInputTokens = readNumber(usage.cache_read_input_tokens);
   const cacheCreationInputTokens = readNumber(usage.cache_creation_input_tokens);
   const totalTokens = [
-    inputTokens,
+    uncachedInputTokens,
     outputTokens,
     cachedInputTokens,
     cacheCreationInputTokens
   ].filter((value): value is number => typeof value === 'number')
     .reduce((total, value) => total + value, 0);
 
+  // 同 providerRuntimeResponsePayload：input_tokens 不含缓存，总数要补回去，
+  // 未命中记原始的 input_tokens，否则统计里命中率恒为 100%。
+  const inputTokens = typeof uncachedInputTokens === 'number'
+    ? uncachedInputTokens + (cachedInputTokens ?? 0) + (cacheCreationInputTokens ?? 0)
+    : undefined;
+
   return compactUsage({
     totalTokens: totalTokens > 0 ? totalTokens : undefined,
     inputTokens,
     outputTokens,
     cachedInputTokens,
-    cacheCreationInputTokens
+    cacheCreationInputTokens,
+    cacheMissInputTokens: uncachedInputTokens
   });
 }
 

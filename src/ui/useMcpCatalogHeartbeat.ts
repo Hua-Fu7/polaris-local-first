@@ -40,7 +40,12 @@ export function useMcpCatalogHeartbeat({ enabled = true }: UseMcpCatalogHeartbea
       try {
         await resolveMcpToolCatalog({
           servers: activeServers,
-          timeoutSeconds: mcpToolTimeoutSeconds
+          timeoutSeconds: mcpToolTimeoutSeconds,
+          // 心跳是唯一负责「新鲜度」的人：绕过发送路径用的近期缓存与失败短路。
+          forceRefresh: true,
+          // 但后台探测不重试——连不上的服务器不该每 12 秒白烧一轮退避，
+          // 恢复检测靠下一轮心跳就够了。
+          retryDelaysMs: []
         });
       } finally {
         inFlightRef.current = false;

@@ -1,5 +1,6 @@
 import { resolveDefaultCollaboratorId } from '../../app/chat/chatConversationSession';
 import { openConversationForCollaborator } from '../../app/chat/chatConversationSession';
+import { closeHomeScreen } from '../../app/home/homeScreenStore';
 import { enterChatWorld } from '../../app/shell/frontstageNavigation';
 import type { Conversation, Persona, World } from '../../types/domain';
 
@@ -164,6 +165,7 @@ export function useAppShellNavigationActions({
     });
     clearPendingAttachments();
     clearPendingCardReference();
+    closeHomeScreen();
     setActiveConversation(conversationId);
     enterChatWorld({ setWorld });
   };

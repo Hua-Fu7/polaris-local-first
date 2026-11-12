@@ -12,7 +12,6 @@ import { runSuccessAction } from '../../../haptics';
 import { MessageCode } from './MessageCode';
 import { MessageCodeBlockView } from './MessageCodeBlockView';
 import { MessageMarkdown } from './MessageMarkdown';
-import { MessageThinkingProjection } from './MessageThinkingProjection';
 import { isCodeWriteToolName, isProjectedCodeToolName } from './projectedCodeTools';
 
 type MessageContentProps = {
@@ -22,11 +21,14 @@ type MessageContentProps = {
   sandboxToolInvocation?: ToolInvocation | null;
   onToggleCodeExpanded: () => void;
   onApplyCustomCss: (css: string) => void;
+  /**
+   * 思考链不再进正文气泡：它只在折叠行（🕐 Thinking…）和抽屉里出现。
+   * 参数留着是为了不动调用点，渲染层已经不消费它。
+   */
   showThinking: boolean;
   preferInlineCode?: boolean;
   hasProjectedCodeToolEvent?: boolean;
   hasResolvedToolEvent?: boolean;
-  collapseThinkingProjection?: boolean;
   smoothStreamingText?: boolean;
 };
 
@@ -283,15 +285,12 @@ export function MessageContent({
   sandboxToolInvocation = null,
   onToggleCodeExpanded,
   onApplyCustomCss,
-  showThinking,
   preferInlineCode = false,
   hasProjectedCodeToolEvent = false,
   hasResolvedToolEvent = false,
-  collapseThinkingProjection = false,
   smoothStreamingText = false
 }: MessageContentProps) {
   const { t } = useI18n();
-  const [closingThinkingText, setClosingThinkingText] = useState<string | null>(null);
   const [copiedToolDraftKey, setCopiedToolDraftKey] = useState<string | null>(null);
   const [copiedProjectedCodeKey, setCopiedProjectedCodeKey] = useState<string | null>(null);
   const isAssistantMessage = message.role === 'assistant';
@@ -302,11 +301,8 @@ export function MessageContent({
   );
   const toolDraftBlocks = isAssistantMessage && !hasResolvedToolEvent ? extractToolDraftBlocks(displayedMessageContent) : [];
   const contentWithoutToolDrafts = isAssistantMessage ? stripToolDraftBlocks(displayedMessageContent) : displayedMessageContent;
-  const thinkingText = isAssistantMessage ? (message.thinkingText?.trim() ?? '') : '';
   const hasRunCodeToolCall = isAssistantMessage
     && (message.nativeToolCalls?.some((toolCall) => toolCall.name.trim() === 'runCode') ?? false);
-  const visibleThinkingText = showThinking && !collapseThinkingProjection ? thinkingText : '';
-  const hasThinkingProjection = isAssistantMessage && !contentWithoutToolDrafts.trim() && Boolean(visibleThinkingText);
   const codeBlocks = extractCodeBlocksFromMessage(contentWithoutToolDrafts);
   const sandboxDraftActive = preferInlineCode && hasRunCodeToolCall;
   const shouldPreferInlineCode = preferInlineCode && !sandboxDraftActive && codeCardActionMode === 'hidden';
@@ -364,32 +360,6 @@ export function MessageContent({
     }, 1400);
   };
 
-  useEffect(() => {
-    if (!isAssistantMessage) {
-      setClosingThinkingText(null);
-      return;
-    }
-
-    if (hasThinkingProjection && visibleThinkingText) {
-      setClosingThinkingText(null);
-      return;
-    }
-
-    if (!visibleThinkingText) {
-      setClosingThinkingText(null);
-      return;
-    }
-
-    setClosingThinkingText(visibleThinkingText);
-    const timeoutId = window.setTimeout(() => {
-      setClosingThinkingText((current) => (current === visibleThinkingText ? null : current));
-    }, 220);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [hasThinkingProjection, isAssistantMessage, visibleThinkingText, message.id]);
-
   if (!isAssistantMessage) {
     return renderRichText(displayedMessageContent);
   }
@@ -399,18 +369,13 @@ export function MessageContent({
       ? stripCodeBlocksFromMessage(contentWithoutToolDrafts).trim()
       : contentWithoutToolDrafts.trim();
 
-    if (!inlineContent && projectedCodeBlocks.length === 0 && toolDraftBlocks.length === 0 && !hasThinkingProjection) {
+    if (!inlineContent && projectedCodeBlocks.length === 0 && toolDraftBlocks.length === 0) {
       return null;
     }
 
     return (
       <>
         {renderAssistantProse(inlineContent)}
-        {hasThinkingProjection && visibleThinkingText ? (
-          <MessageThinkingProjection thinkingText={visibleThinkingText} />
-        ) : closingThinkingText ? (
-          <MessageThinkingProjection thinkingText={closingThinkingText} phase="closing" />
-        ) : null}
         {renderProjectedCodeBlocks(t, message.id, projectedCodeBlocks, copiedProjectedCodeKey, (block) => {
           void copyProjectedCode(block);
         }, shouldDeferProjectedCodeBody, hasCodeWriteProjection ? 'sandbox' : 'plain')}
@@ -420,20 +385,14 @@ export function MessageContent({
       </>
     );
   }
-  const shouldShowThinkingProjection = !proseContent && codeBlocks.length === 0 && toolDraftBlocks.length === 0 && Boolean(visibleThinkingText);
 
-  if (!displayedMessageContent.trim() && codeBlocks.length === 0 && toolDraftBlocks.length === 0 && !shouldShowThinkingProjection) {
+  if (!displayedMessageContent.trim() && codeBlocks.length === 0 && toolDraftBlocks.length === 0) {
     return null;
   }
 
   return (
     <>
       {renderAssistantProse(proseContent)}
-      {shouldShowThinkingProjection && visibleThinkingText ? (
-        <MessageThinkingProjection thinkingText={visibleThinkingText} />
-      ) : closingThinkingText ? (
-        <MessageThinkingProjection thinkingText={closingThinkingText} phase="closing" />
-      ) : null}
       {renderToolDrafts(t, message.id, toolDraftBlocks, copiedToolDraftKey, (block, index) => {
         void copyToolDraft(block, index);
       })}
@@ -452,7 +411,7 @@ export function MessageContent({
           onApplyCustomCss={onApplyCustomCss}
         />
       ) : null}
-      {codeBlocks.length === 0 && toolDraftBlocks.length === 0 && !proseContent && !shouldShowThinkingProjection ? renderRichText(displayedMessageContent) : null}
+      {codeBlocks.length === 0 && toolDraftBlocks.length === 0 && !proseContent ? renderRichText(displayedMessageContent) : null}
     </>
   );
 }

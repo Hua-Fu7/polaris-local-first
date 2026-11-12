@@ -2,6 +2,7 @@ import type { topbar as zhTopbar } from '../zh-CN/topbar';
 
 export const topbar = {
   'topbar.switchRoom': 'Switch room',
+  'topbar.goHome': 'Go home',
   'topbar.switchCollaboratorSpace': 'Switch collaborator space',
   'topbar.previewActive': 'Previewing',
   'topbar.secretPromptExperimental': 'Experimental sandbox is enabled.\nEnter the passphrase to keep it enabled; leave blank to return to safe mode.',

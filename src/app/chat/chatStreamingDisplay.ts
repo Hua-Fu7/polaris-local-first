@@ -90,13 +90,17 @@ export function resolveChatMessageLifecycle(args: {
   return 'rest';
 }
 
+/**
+ * 流式期间气泡里有东西可渲染吗。
+ *
+ * 只看正文：思考链不进气泡——它在折叠行里流，正文气泡要么是星标 prelude、
+ * 要么是正在长出来的回答，不该出现"思考先占着气泡、回答来了再把它顶掉"的跳变。
+ */
 export function hasRenderableAssistantStreamingPayload(
-  message: Pick<ChatMessage, 'content' | 'thinkingText'>,
-  showThinking: boolean
+  message: Pick<ChatMessage, 'content'>,
+  _showThinking: boolean
 ) {
-  if (message.content.trim()) return true;
-  if (showThinking && message.thinkingText?.trim()) return true;
-  return false;
+  return Boolean(message.content.trim());
 }
 
 function hasVisibleAssistantReplyText(message: Pick<ChatMessage, 'content'>) {

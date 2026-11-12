@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { getAssetBlob } from '../../../infrastructure/assetStore';
 import { reportPersistenceError } from '../../../infrastructure/persistenceDiagnostics';
 import { formatAttachmentSize } from '../../../engines/attachmentFormat';
@@ -9,16 +10,23 @@ import { useI18n, type I18nTranslator } from '../../../i18n';
 
 type ChatAttachmentStripProps = {
   attachments: ChatAttachment[] | undefined;
-  tone: 'pending' | 'message';
+  tone: 'pending' | 'message' | 'sticker';
   onRemove?: (attachmentId: string) => void;
   onSaveImage?: (attachment: ChatAttachment) => void;
 };
 
 type AttachmentChipProps = {
   attachment: ChatAttachment;
-  tone: 'pending' | 'message';
+  tone: 'pending' | 'message' | 'sticker';
   onRemove?: (attachmentId: string) => void;
   onSaveImage?: (attachment: ChatAttachment) => void;
+  onOpenImage?: (image: ChatImagePreview) => void;
+};
+
+type ChatImagePreview = {
+  src: string;
+  name: string;
+  size: string;
 };
 
 const FILE_PREVIEW_MAX_CHARS = 180;
@@ -93,7 +101,8 @@ function AttachmentChip({
   attachment,
   tone,
   onRemove,
-  onSaveImage
+  onSaveImage,
+  onOpenImage
 }: AttachmentChipProps) {
   const { t } = useI18n();
   const { ref, shouldLoad } = useNearViewportAssetLoading();
@@ -102,7 +111,6 @@ function AttachmentChip({
   const imageSecondaryText = attachment.clearedAt
     ? t('chat.attachment.cleared', { size: formatAttachmentSize(attachment.size) })
     : formatAttachmentSize(attachment.size);
-  const canOpenImagePreview = canOpenImagePreviewLink();
 
   const renderFileChip = (
     <>
@@ -116,40 +124,33 @@ function AttachmentChip({
   const renderImagePlaceholder = (
     <>
       <div className="attachment-file-icon">{t('chat.attachment.imageIcon')}</div>
-      <div className="attachment-copy">
-        <strong>{tone === 'message' ? t('chat.attachment.image') : attachment.name}</strong>
-        <span>{imageSecondaryText}</span>
-      </div>
+      {tone === 'message' ? null : (
+        <div className="attachment-copy">
+          <strong>{attachment.name}</strong>
+          <span>{imageSecondaryText}</span>
+        </div>
+      )}
     </>
   );
 
   return (
     <div ref={ref} key={attachment.id} className={`attachment-chip ${attachment.kind} ${tone}${attachment.clearedAt ? ' cleared' : ''}`}>
       {attachment.kind === 'image' && assetUrl ? (
-        canOpenImagePreview ? (
-          <a
-            href={assetUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="attachment-preview-link"
-            aria-label={t('chat.attachment.openAria', { name: attachment.name })}
-            title={attachment.name}
-          >
-            <img src={assetUrl} alt={attachment.name} className="attachment-thumb" />
+        <button
+          type="button"
+          className="attachment-preview-link"
+          aria-label={t('chat.attachment.openAria', { name: attachment.name })}
+          title={attachment.name}
+          onClick={() => onOpenImage?.({ src: assetUrl, name: attachment.name, size: imageSecondaryText })}
+        >
+          <img src={assetUrl} alt={attachment.name} className="attachment-thumb" />
+          {tone === 'message' || tone === 'sticker' ? null : (
             <div className="attachment-copy">
-              <strong>{tone === 'message' ? t('chat.attachment.image') : attachment.name}</strong>
+              <strong>{attachment.name}</strong>
               <span>{imageSecondaryText}</span>
             </div>
-          </a>
-        ) : (
-          <div className="attachment-preview-link attachment-preview-static" title={attachment.name}>
-            <img src={assetUrl} alt={attachment.name} className="attachment-thumb" />
-            <div className="attachment-copy">
-              <strong>{tone === 'message' ? t('chat.attachment.image') : attachment.name}</strong>
-              <span>{imageSecondaryText}</span>
-            </div>
-          </div>
-        )
+          )}
+        </button>
       ) : attachment.kind === 'image' ? (
         renderImagePlaceholder
       ) : attachment.assetId && !attachment.clearedAt ? (
@@ -175,16 +176,6 @@ function AttachmentChip({
           ✕
         </button>
       )}
-      {!onRemove && onSaveImage && attachment.kind === 'image' && !attachment.clearedAt ? (
-        <button
-          type="button"
-          className="attachment-save-btn"
-          onClick={() => onSaveImage(attachment)}
-          aria-label={t('chat.attachment.saveAria', { name: attachment.name })}
-        >
-          {t('chat.attachment.save')}
-        </button>
-      ) : null}
     </div>
   );
 }
@@ -195,19 +186,61 @@ export function ChatAttachmentStrip({
   onRemove,
   onSaveImage
 }: ChatAttachmentStripProps) {
+  const [previewImage, setPreviewImage] = useState<ChatImagePreview | null>(null);
+
+  useEffect(() => {
+    if (!previewImage) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewImage(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [previewImage]);
+
   if (!attachments?.length) return null;
 
+  const previewOverlay = previewImage && typeof document !== 'undefined' ? createPortal(
+    <div
+      className="chat-image-preview-layer"
+      role="dialog"
+      aria-modal="true"
+      aria-label={previewImage.name}
+      onClick={() => setPreviewImage(null)}
+    >
+      <button
+        type="button"
+        className="chat-image-preview-close"
+        aria-label="关闭"
+        onClick={() => setPreviewImage(null)}
+      >
+        ×
+      </button>
+      <img
+        src={previewImage.src}
+        alt={previewImage.name}
+        onClick={(event) => event.stopPropagation()}
+      />
+      <span className="chat-image-preview-size">{previewImage.size}</span>
+    </div>,
+    document.body
+  ) : null;
+
   return (
-    <div className={`attachment-strip ${tone}`}>
-      {attachments.map((attachment) => (
-        <AttachmentChip
-          key={attachment.id}
-          attachment={attachment}
-          tone={tone}
-          onRemove={onRemove}
-          onSaveImage={onSaveImage}
-        />
-      ))}
-    </div>
+    <>
+      <div className={`attachment-strip ${tone}`}>
+        {attachments.map((attachment) => (
+          <AttachmentChip
+            key={attachment.id}
+            attachment={attachment}
+            tone={tone}
+            onRemove={onRemove}
+            onSaveImage={onSaveImage}
+            onOpenImage={setPreviewImage}
+          />
+        ))}
+      </div>
+      {previewOverlay}
+    </>
   );
 }
+

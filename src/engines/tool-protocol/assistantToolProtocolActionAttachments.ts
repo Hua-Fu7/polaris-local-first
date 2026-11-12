@@ -159,6 +159,21 @@ export function parseAttachmentToolAction(action: Record<string, unknown>): Pars
         title: normalizeOptionalString(action.title),
         targetLabel: normalizeOptionalString(action.targetLabel)
       } };
+    case 'sendVoiceMessage': {
+      const text = (
+        normalizeOptionalString(action.text)
+        ?? normalizeOptionalString(action.content)
+        ?? normalizeOptionalString(action.say)
+      )?.trim();
+      if (!text) {
+        return { action: null, issue: 'sendVoiceMessage 缺少要念的那句话（text）。' };
+      }
+      return { action: {
+        kind: 'sendVoiceMessage',
+        text,
+        targetLabel: normalizeOptionalString(action.targetLabel)
+      } };
+    }
     case 'inspectImageAsset':
       return { action: {
         kind: 'inspectImageAsset',

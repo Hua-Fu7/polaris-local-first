@@ -19,6 +19,8 @@ export type ProviderRuntimeRequestInput = {
   advanced?: PersonaAdvancedSettings;
   bodyOverrides?: Record<string, unknown>;
   openAiToolHistoryMode?: OpenAiToolHistoryMode;
+  /** 判断层专用：把 `toolChoice: required` 穿透 capability 白名单，强制模型必须调用工具。 */
+  forceToolChoice?: boolean;
 };
 
 export type ProviderRuntimeCapabilityInput = {

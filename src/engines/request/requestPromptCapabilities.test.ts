@@ -70,7 +70,7 @@ describe('buildCapabilityEntries', () => {
     expect(entries.find((entry) => entry.name === 'tool_protocol_capability')?.content).toContain('协议 fallback：');
   });
 
-  it('does not expand tool catalog or protocol guidance when every toolbox group is off', () => {
+  it('keeps the calendar tool catalog when every toolbox group is off', () => {
     const entries = buildCapabilityEntries({
       messages: [],
       toolContext: {
@@ -92,19 +92,21 @@ describe('buildCapabilityEntries', () => {
           memory: false,
           memoryRecall: false,
           memoryWrite: false,
-          proactive: false
+          proactive: false,
+          voice: false,voiceCall: false
         }
       },
       toolProtocolMode: 'hybrid'
     });
 
-    expect(entries.find((entry) => entry.name === 'tool_disabled_capability')).toMatchObject({
+    expect(entries.find((entry) => entry.name === 'tool_disabled_capability')).toBeUndefined();
+    expect(entries.find((entry) => entry.name === 'tool_catalog_capability')).toMatchObject({
       layer: 'capability',
-      content: expect.stringContaining('用户目前关闭了所有工具')
+      content: expect.stringContaining('readCalendarNotes')
     });
-    expect(entries.find((entry) => entry.name === 'tool_capability')).toBeUndefined();
-    expect(entries.find((entry) => entry.name === 'tool_catalog_capability')).toBeUndefined();
-    expect(entries.find((entry) => entry.name === 'tool_protocol_capability')).toBeUndefined();
+    expect(entries.find((entry) => entry.name === 'tool_capability')).toBeDefined();
+    expect(entries.find((entry) => entry.name === 'tool_protocol_capability')).toBeDefined();
+
   });
 
   it('splits tool context snapshots into dynamic context prompt parts', () => {
@@ -174,7 +176,7 @@ describe('buildCapabilityEntries', () => {
     expect(uiContext).toContain('当前界面：对话区');
     expect(uiContext).toContain('对话式头像布局');
     expect(uiContext).toContain('回复正文仍然渲染在同一个助手气泡里');
-    expect(entries.find((entry) => entry.name === 'attachment_context_capability')?.content).toContain('最近一条用户附件：');
+    expect(entries.find((entry) => entry.name === 'attachment_context_capability')?.content).toContain('本轮用户附件：');
     expect(entries.find((entry) => entry.name === 'desktop_local_context_capability')?.content).toContain('本机环境：');
     expect(entries.find((entry) => entry.name === 'room_context_capability')?.content).toContain('当前活动工作区：Mini Phone');
   });

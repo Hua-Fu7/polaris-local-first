@@ -1,7 +1,11 @@
+import { useEffect, useState } from 'react';
 import type { ConversationSummaryModelSettings, MemoryVectorRetrievalSettings, ProviderProfile } from '../../../types/domain';
 import { type I18nTranslator, useI18n } from '../../../i18n';
 import { HelpHint } from '../../HelpHint';
 import { Icon } from '../../Icon';
+import { useRuntimeStore } from '../../../stores/runtimeStore';
+import { createObClient } from '../../../engines/ombreBrain/obClient';
+import { hasPersistentObSecretStore, readObPassword, writeObPassword } from '../../../engines/ombreBrain/obSecret';
 
 type MenuMemoryPageProps = {
   conversationSummaryModel: ConversationSummaryModelSettings;
@@ -171,6 +175,147 @@ function ConversationSummaryModelSettingsPanel({
   );
 }
 
+function OmbreBrainSettingsPanel() {
+  const { t } = useI18n();
+  const obBrain = useRuntimeStore((state) => state.obBrain);
+  const setObBrain = useRuntimeStore((state) => state.setObBrain);
+  const [passwordDraft, setPasswordDraft] = useState('');
+  const [storedPassword, setStoredPassword] = useState('');
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const persistentSecret = hasPersistentObSecretStore();
+
+  useEffect(() => {
+    let cancelled = false;
+    void readObPassword().then((value) => {
+      if (!cancelled) setStoredPassword(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const effectivePassword = passwordDraft.trim() || storedPassword;
+
+  const savePassword = async () => {
+    const value = passwordDraft.trim();
+    if (!value) return;
+    await writeObPassword(value);
+    setStoredPassword(value);
+    setPasswordDraft('');
+    setTestResult(null);
+  };
+
+  const testConnection = async () => {
+    if (!obBrain.baseUrl.trim()) {
+      setTestResult(t('settings.ob.testFail', { reason: t('settings.ob.urlLabel') }));
+      return;
+    }
+    if (!effectivePassword) {
+      setTestResult(t('settings.ob.testFail', { reason: t('settings.ob.passwordMissing') }));
+      return;
+    }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      // 手动测连接，预算给宽一点：这里等得起，召回不能等。
+      const client = createObClient({
+        baseUrl: obBrain.baseUrl,
+        password: effectivePassword,
+        timeoutMs: 5000
+      });
+      const buckets = await client.listBuckets({ budgetMs: 5000 });
+      const error = client.getLastError();
+      setTestResult(error
+        ? t('settings.ob.testFail', { reason: error })
+        : t('settings.ob.testOk', { count: buckets.length }));
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div className="memory-toggle-grid">
+      <div
+        className="memory-toggle memory-toggle--switch toolbox-toggle-row"
+        data-checked={obBrain.enabled ? 'true' : 'false'}
+      >
+        <div className="toolbox-toggle-row-head">
+          <div className="memory-toggle-copy toolbox-toggle-copy">
+            <strong>
+              <span className="toolbox-toggle-icon" aria-hidden="true">
+                <Icon name="orbit" size={13} />
+              </span>
+              {t('settings.ob.title')}
+            </strong>
+            <span>{t('settings.ob.detail')}</span>
+          </div>
+          <button
+            type="button"
+            className={`ps-toggle-sw memory-toggle-switch ${obBrain.enabled ? 'ps-toggle-sw--on' : ''}`}
+            aria-pressed={obBrain.enabled}
+            aria-label={`${t('settings.ob.title')} ${obBrain.enabled ? t('settings.enabled') : t('settings.disabled')}`}
+            onClick={() => setObBrain({ enabled: !obBrain.enabled })}
+          >
+            <span className="ps-toggle-knob" />
+          </button>
+        </div>
+        {obBrain.enabled ? (
+          <div className="toolbox-inline-config">
+            <div className="settings-form">
+              <label>{t('settings.ob.urlLabel')}</label>
+              <input
+                value={obBrain.baseUrl}
+                onChange={(event) => setObBrain({ baseUrl: event.target.value })}
+                placeholder="https://ombrebrain.example.top"
+                inputMode="url"
+                autoComplete="off"
+              />
+              <label>{t('settings.ob.passwordLabel')}</label>
+              <div className="ob-secret-row">
+                <input
+                  type="password"
+                  value={passwordDraft}
+                  onChange={(event) => setPasswordDraft(event.target.value)}
+                  placeholder={storedPassword ? '••••••••' : t('settings.ob.passwordLabel')}
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  className="ob-secret-save"
+                  disabled={!passwordDraft.trim()}
+                  onClick={() => { void savePassword(); }}
+                >
+                  {t('memory.docs.save')}
+                </button>
+              </div>
+              <p className="settings-form-note">
+                {persistentSecret ? t('settings.ob.passwordNote') : t('settings.ob.passwordVolatile')}
+              </p>
+              <label>{t('settings.ob.timeoutLabel')}</label>
+              <input
+                value={String(obBrain.timeoutMs)}
+                inputMode="numeric"
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  setObBrain({ timeoutMs: Number.isFinite(value) ? value : undefined });
+                }}
+                placeholder="1500"
+              />
+            </div>
+            <div className="ob-test-row">
+              <button type="button" className="ob-test-btn" disabled={testing} onClick={() => { void testConnection(); }}>
+                {testing ? t('settings.ob.testing') : t('settings.ob.test')}
+              </button>
+              {testResult ? <span className="ob-test-result">{testResult}</span> : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function MenuMemoryPage({
   conversationSummaryModel,
   providers,
@@ -209,6 +354,20 @@ export function MenuMemoryPage({
             onSetConversationSummaryModel={onSetConversationSummaryModel}
           />
         </div>
+      </section>
+
+      <section className="menu-section">
+        <div className="menu-section-head">
+          <span className="menu-section-kicker menu-section-kicker-row">
+            {t('settings.ob.section')}
+            <HelpHint
+              label={t('settings.ob.section')}
+              text={t('settings.ob.help')}
+            />
+          </span>
+          <p className="menu-section-note">{t('settings.ob.note')}</p>
+        </div>
+        <OmbreBrainSettingsPanel />
       </section>
     </div>
   );

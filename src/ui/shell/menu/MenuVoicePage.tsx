@@ -1,9 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { requestGeneratedSpeech } from '../../../engines/voiceGenerationClient';
+import { VOICE_TRANSCRIPTION_PROVIDER_PROFILES } from '../../../engines/speechTranscriptionClient';
+import { transcriptionDefaultsForProvider } from '../../../stores/runtimeStoreVoiceTranscription';
+import {
+  DEFAULT_VOICE_CALL_ORB_COLOR,
+  VOICE_CALL_ORB_COLOR_SWATCHES
+} from '../../../stores/runtimeStoreCustomization';
 import type {
   VoiceGenerationFormat,
   VoiceGenerationProviderType,
-  VoiceGenerationSettings
+  VoiceGenerationSettings,
+  VoiceTranscriptionProviderType,
+  VoiceTranscriptionSettings
 } from '../../../types/domain';
 import { useI18n } from '../../../i18n';
 import { HelpHint } from '../../HelpHint';
@@ -12,8 +20,13 @@ import { MiniMaxVoiceDesignerDialog } from './MiniMaxVoiceDesignerDialog';
 
 type MenuVoicePageProps = {
   voiceGeneration: VoiceGenerationSettings;
+  voiceTranscription: VoiceTranscriptionSettings;
+  /** Null means the built-in grey. */
+  voiceCallOrbColor: string | null;
   onBack: () => void;
   onSetVoiceGeneration: (patch: Partial<VoiceGenerationSettings>) => void;
+  onSetVoiceTranscription: (patch: Partial<VoiceTranscriptionSettings>) => void;
+  onSetVoiceCallOrbColor: (color: string | null) => void;
 };
 
 type VoicePreset = {
@@ -43,18 +56,49 @@ const VOICE_PRESETS: Record<VoiceGenerationProviderType, VoicePreset[]> = {
 
 export function MenuVoicePage({
   voiceGeneration,
+  voiceTranscription,
+  voiceCallOrbColor,
   onBack,
-  onSetVoiceGeneration
+  onSetVoiceGeneration,
+  onSetVoiceTranscription,
+  onSetVoiceCallOrbColor
 }: MenuVoicePageProps) {
   const { t } = useI18n();
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'playing'>('idle');
   const [previewStatus, setPreviewStatus] = useState('');
   const [voiceDesignerOpen, setVoiceDesignerOpen] = useState(false);
+  const [transcriptionAdvancedOpen, setTranscriptionAdvancedOpen] = useState(false);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewAudioUrlRef = useRef<string | null>(null);
   const previewAbortRef = useRef<AbortController | null>(null);
   const voiceGenerationStateLabel = voiceGeneration.enabled ? t('settings.enabled') : t('settings.disabled');
+  const transcriptionStateLabel = voiceTranscription.enabled ? t('settings.enabled') : t('settings.disabled');
+  const transcriptionReuseVoiceBaseUrl = voiceTranscription.reuseVoiceBaseUrl ?? true;
+  const transcriptionEndpointSource = transcriptionReuseVoiceBaseUrl && !voiceTranscription.baseUrl?.trim()
+    ? voiceGeneration.baseUrl?.trim()
+      ? t('settings.voice.transcriptionReuseBinding')
+      : t('settings.voice.transcriptionReuseMissingBase')
+    : '';
   const voiceProviderType = voiceGeneration.providerType ?? 'openai-compatible';
+  const transcriptionProviderType = voiceTranscription.providerType ?? 'openai-compatible';
+  const transcriptionProfile = VOICE_TRANSCRIPTION_PROVIDER_PROFILES[transcriptionProviderType];
+  const transcriptionModelPlaceholder = transcriptionProviderType === 'minimax'
+    ? t('settings.voice.transcriptionModelPlaceholderMiniMax')
+    : transcriptionProviderType === 'elevenlabs'
+      ? t('settings.voice.transcriptionModelPlaceholderElevenLabs')
+      : t('settings.voice.transcriptionModelPlaceholder');
+  const transcriptionLanguagePlaceholder = transcriptionProviderType === 'elevenlabs'
+    ? t('settings.voice.transcriptionLanguagePlaceholderElevenLabs')
+    : t('settings.voice.transcriptionLanguagePlaceholder');
+  // Reuse only bites when the transcription side actually falls back to the
+  // playback config, and it is wrong when the two sides are different vendors.
+  const transcriptionFollowsPlayback = transcriptionReuseVoiceBaseUrl
+    && (!voiceTranscription.baseUrl?.trim() || !voiceTranscription.apiKey?.trim());
+  const transcriptionProviderMismatch = transcriptionFollowsPlayback
+    && voiceProviderType !== transcriptionProviderType;
+  const onTranscriptionProviderChange = (next: VoiceTranscriptionProviderType) => {
+    onSetVoiceTranscription(transcriptionDefaultsForProvider(next));
+  };
   const voicePresets = useMemo(() => {
     const presets = [...VOICE_PRESETS[voiceProviderType]];
     for (const customVoice of voiceGeneration.customVoices ?? []) {
@@ -415,6 +459,188 @@ export function MenuVoicePage({
           </div>
         </div>
       </section>
+
+      <section className="menu-section">
+        <div className="menu-section-head">
+          <span className="menu-section-kicker menu-section-kicker-row">
+            {t('settings.voice.transcriptionSection')}
+            <HelpHint
+              label={t('settings.voice.transcriptionSection')}
+              text={t('settings.voice.transcriptionNote')}
+            />
+          </span>
+          <p className="menu-section-note">{t('settings.voice.transcriptionNote')}</p>
+        </div>
+
+        <div className="memory-toggle-grid">
+          <div
+            className="memory-toggle memory-toggle--switch toolbox-toggle-row"
+            data-checked={voiceTranscription.enabled ? 'true' : 'false'}
+          >
+            <div className="toolbox-toggle-row-head">
+              <div className="memory-toggle-copy toolbox-toggle-copy">
+                <strong>
+                  <span className="toolbox-toggle-icon" aria-hidden="true">
+                    <Icon name="voice" size={13} />
+                  </span>
+                  {t('settings.voice.transcriptionToggleTitle')}
+                </strong>
+                <span>{t('settings.voice.transcriptionToggleDetail')}</span>
+              </div>
+              <button
+                type="button"
+                className={`ps-toggle-sw memory-toggle-switch ${voiceTranscription.enabled ? 'ps-toggle-sw--on' : ''}`}
+                aria-pressed={voiceTranscription.enabled}
+                aria-label={`${t('settings.voice.transcriptionToggleTitle')} ${transcriptionStateLabel}`}
+                onClick={() => onSetVoiceTranscription({ enabled: !voiceTranscription.enabled })}
+              >
+                <span className="ps-toggle-knob" />
+              </button>
+            </div>
+
+            {voiceTranscription.enabled ? (
+              <div className="toolbox-inline-config">
+                <div className="settings-form">
+                  <label>{t('settings.voice.providerTypeLabel')}</label>
+                  <select
+                    value={transcriptionProviderType}
+                    onChange={(event) => onTranscriptionProviderChange(event.target.value as VoiceTranscriptionProviderType)}
+                  >
+                    <option value="openai-compatible">{t('settings.voice.providerTypeOpenAi')}</option>
+                    <option value="minimax">{t('settings.voice.providerTypeMiniMax')}</option>
+                    <option value="elevenlabs">{t('settings.voice.providerTypeElevenLabs')}</option>
+                  </select>
+                  {transcriptionProviderType === 'elevenlabs' ? (
+                    <p className="menu-section-note ps-field-hint">
+                      {t('settings.voice.transcriptionElevenLabsProxyNote')}
+                    </p>
+                  ) : null}
+
+                  <label className="menu-preference-row menu-preference-row--switch">
+                    <span className="menu-preference-copy">
+                      <strong>{t('settings.voice.transcriptionReuseLabel')}</strong>
+                      <small>
+                        {transcriptionEndpointSource || t('settings.voice.transcriptionReuseHint')}
+                      </small>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={transcriptionReuseVoiceBaseUrl}
+                      onChange={(event) => onSetVoiceTranscription({ reuseVoiceBaseUrl: event.target.checked })}
+                    />
+                  </label>
+
+                  {transcriptionProviderMismatch ? (
+                    <p className="menu-section-note ps-field-hint">
+                      {t('settings.voice.transcriptionProviderMismatch')}
+                    </p>
+                  ) : null}
+
+                  {!transcriptionReuseVoiceBaseUrl || voiceTranscription.baseUrl?.trim() ? (
+                    <>
+                      <label>{t('settings.voice.baseUrlLabel')}</label>
+                      <input
+                        value={voiceTranscription.baseUrl ?? ''}
+                        onChange={(event) => onSetVoiceTranscription({ baseUrl: event.target.value })}
+                        placeholder={t('settings.voice.baseUrlPlaceholder')}
+                      />
+
+                      <label>{t('settings.voice.apiKeyLabel')}</label>
+                      <input
+                        type="password"
+                        value={voiceTranscription.apiKey ?? ''}
+                        onChange={(event) => onSetVoiceTranscription({ apiKey: event.target.value })}
+                        placeholder={t('settings.voice.apiKeyPlaceholder')}
+                      />
+                    </>
+                  ) : null}
+
+                  <label>{t('settings.voice.modelLabel')}</label>
+                  <input
+                    value={voiceTranscription.model ?? ''}
+                    onChange={(event) => onSetVoiceTranscription({ model: event.target.value })}
+                    placeholder={transcriptionModelPlaceholder}
+                  />
+
+                  <label>{t('settings.voice.transcriptionLanguageLabel')}</label>
+                  <input
+                    value={voiceTranscription.language ?? ''}
+                    onChange={(event) => onSetVoiceTranscription({ language: event.target.value })}
+                    placeholder={transcriptionLanguagePlaceholder}
+                  />
+
+                  <button
+                    type="button"
+                    className="btn-secondary compact"
+                    aria-expanded={transcriptionAdvancedOpen}
+                    onClick={() => setTranscriptionAdvancedOpen((open) => !open)}
+                  >
+                    <Icon name={transcriptionAdvancedOpen ? 'chevronUp' : 'chevronDown'} size={14} />
+                    <span>{t('settings.voice.transcriptionAdvanced')}</span>
+                  </button>
+
+                  {transcriptionAdvancedOpen ? (
+                    <>
+                      <label>{t('settings.voice.pathLabel')}</label>
+                      <input
+                        value={voiceTranscription.path ?? transcriptionProfile.path}
+                        onChange={(event) => onSetVoiceTranscription({ path: event.target.value })}
+                        placeholder={transcriptionProfile.path}
+                      />
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <section className="menu-section">
+        <div className="menu-section-head">
+          <span className="menu-section-kicker menu-section-kicker-row">
+            {t('settings.voice.callAppearanceSection')}
+            <HelpHint
+              label={t('settings.voice.helpLabel')}
+              text={t('settings.voice.callAppearanceHelp')}
+            />
+          </span>
+          <p className="menu-section-note">{t('settings.voice.callAppearanceNote')}</p>
+        </div>
+
+        <div className="menu-preference-row voice-call-orb-color-row">
+          <span className="menu-preference-copy">
+            <strong>{t('settings.voice.callOrbColorLabel')}</strong>
+          </span>
+          <div className="voice-call-orb-color-swatches" role="radiogroup" aria-label={t('settings.voice.callOrbColorLabel')}>
+            {VOICE_CALL_ORB_COLOR_SWATCHES.map((color) => {
+              const active = (voiceCallOrbColor ?? DEFAULT_VOICE_CALL_ORB_COLOR) === color;
+              return (
+                <button
+                  key={color}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  aria-label={color}
+                  className={`voice-call-orb-color-swatch${active ? ' active' : ''}`}
+                  style={{ '--swatch-color': color } as CSSProperties}
+                  onClick={() => onSetVoiceCallOrbColor(color)}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="btn-secondary compact voice-call-orb-color-reset"
+          disabled={!voiceCallOrbColor}
+          onClick={() => onSetVoiceCallOrbColor(null)}
+        >
+          {t('settings.voice.callOrbColorReset')}
+        </button>
+      </section>
+
       {voiceDesignerOpen ? (
         <MiniMaxVoiceDesignerDialog
           voiceGeneration={voiceGeneration}

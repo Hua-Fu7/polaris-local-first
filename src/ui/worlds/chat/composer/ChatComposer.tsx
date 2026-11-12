@@ -49,6 +49,7 @@ export function ChatComposer() {
   const attachments = useChatAttachments();
   const actions = useChatActions();
   const [attachmentPickerOpen, setAttachmentPickerOpen] = useState(false);
+  const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeConversationId = presentation.activeConversationId;
   const [localDraft, setLocalDraft] = useState(composer.inputDraft);
@@ -191,14 +192,16 @@ export function ChatComposer() {
   const handleComposerInputEngage = () => {
     if (!attachmentPickerOpen) return;
     setAttachmentPickerOpen(false);
+    setStickerPickerOpen(false);
   };
   const handleComposerBlankDismiss = (target: EventTarget | null) => {
     if (!attachmentPickerOpen || !(target instanceof HTMLElement)) return;
     const interactiveTarget = target.closest(
-      'button, textarea, input, .chat-box-shell, .active-preview-strip, .chat-workspace-banner, .composer-card-reference-strip, .attachment-warning'
+      'button, textarea, input, .chat-box-shell, .attachment-picker-sheet, .active-preview-strip, .chat-workspace-banner, .composer-card-reference-strip, .attachment-warning'
     );
     if (interactiveTarget) return;
     setAttachmentPickerOpen(false);
+    setStickerPickerOpen(false);
   };
   const handlePickSlashCommand = (insertText: string) => {
     updateLocalDraft(insertText);
@@ -220,8 +223,12 @@ export function ChatComposer() {
           onPointerDown={(event) => {
             event.preventDefault();
             setAttachmentPickerOpen(false);
+            setStickerPickerOpen(false);
           }}
-          onClick={() => setAttachmentPickerOpen(false)}
+          onClick={() => {
+            setAttachmentPickerOpen(false);
+            setStickerPickerOpen(false);
+          }}
         />
       ) : null}
       <div
@@ -250,6 +257,9 @@ export function ChatComposer() {
           pendingCardReference={resolvedPendingCardReference}
           availableCards={composer.availableCards}
           onAddAttachments={handleAddAttachments}
+          onAddStoredAttachments={attachments.add}
+          stickerPickerOpen={stickerPickerOpen}
+          onSetStickerPickerOpen={setStickerPickerOpen}
           onRemoveAttachment={attachments.remove}
           onToggleTaskModeEnabled={actions.setTaskModeEnabled}
           onOpenToolbox={actions.openToolbox}
@@ -285,7 +295,10 @@ export function ChatComposer() {
               <ComposerQuickActions
                 pickerOpen={attachmentPickerOpen}
                 interactionLocked={interactionLocked}
-                onSetPickerOpen={setAttachmentPickerOpen}
+                onSetPickerOpen={(open) => {
+                  setAttachmentPickerOpen(open);
+                  if (open) setStickerPickerOpen(false);
+                }}
               />
               <textarea
                 ref={textareaRef}
@@ -300,6 +313,18 @@ export function ChatComposer() {
                 placeholder={`to ${presentation.assistantName}`}
               />
               <button
+                type="button"
+                className={`composer-sticker-btn ${stickerPickerOpen && attachmentPickerOpen ? 'active' : ''}`}
+                disabled={interactionLocked}
+                aria-label={t('chat.composer.stickers')}
+                title={t('chat.composer.stickers')}
+                onClick={() => {
+                  setStickerPickerOpen(true);
+                  setAttachmentPickerOpen(true);
+                }}
+              >
+                <Icon name="sticker" size={17} />
+              </button>              <button
                 type="button"
                 className={`send-btn ${
                   ui.sending

@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { base64ToBytes, bytesToBase64 } from './nativeBase64';
+import { resolveExportMimeType } from '../infrastructure/exportMimeType';
 
 type NativeImportResult = {
   canceled: boolean;
@@ -39,6 +40,8 @@ type SystemFilePlugin = {
   }) => Promise<void>;
   finishExportBackup?: (options: {
     exportId: string;
+    /** 必传：原生侧用它在「另存为」弹窗里声明类型，缺省会落回 application/zip。 */
+    mimeType?: string;
   }) => Promise<NativeExportResult>;
   cancelExportBackup?: (options: {
     exportId: string;
@@ -136,8 +139,9 @@ export function canWriteNativePersistenceZipEntries() {
 }
 
 export async function exportFileViaSystemFiles(blob: Blob, fileName: string) {
+  const mimeType = resolveExportMimeType(fileName, blob.type);
   if (canStreamNativeSystemBackupFiles()) {
-    const exportId = await beginExportFileViaSystemFiles(fileName, blob.type || 'application/zip');
+    const exportId = await beginExportFileViaSystemFiles(fileName, mimeType);
     try {
       for (let offset = 0; offset < blob.size; offset += NATIVE_EXPORT_CHUNK_BYTES) {
         const chunk = new Uint8Array(
@@ -145,7 +149,7 @@ export async function exportFileViaSystemFiles(blob: Blob, fileName: string) {
         );
         await appendExportFileChunkViaSystemFiles(exportId, chunk);
       }
-      return await finishExportFileViaSystemFiles(exportId);
+      return await finishExportFileViaSystemFiles(exportId, mimeType);
     } catch (error) {
       await cancelExportFileViaSystemFiles(exportId);
       throw error;
@@ -155,7 +159,7 @@ export async function exportFileViaSystemFiles(blob: Blob, fileName: string) {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const result = await SystemFile.exportBackup({
     fileName,
-    mimeType: blob.type || 'application/zip',
+    mimeType,
     dataBase64: bytesToBase64(bytes)
   });
   return !result.canceled;
@@ -182,11 +186,13 @@ export async function appendExportFileChunkViaSystemFiles(exportId: string, chun
   });
 }
 
-export async function finishExportFileViaSystemFiles(exportId: string) {
+export async function finishExportFileViaSystemFiles(exportId: string, mimeType?: string) {
   if (!SystemFile.finishExportBackup) {
     throw new Error('当前 App 版暂不支持分块导出。');
   }
-  const result = await SystemFile.finishExportBackup({ exportId });
+  // mimeType 必须在这里传：原生侧是「收尾」时才建 Intent 的，
+  // 不传就落回默认值 application/zip，系统于是给 .mp3 再补一个 .zip。
+  const result = await SystemFile.finishExportBackup({ exportId, mimeType });
   return !result.canceled;
 }
 

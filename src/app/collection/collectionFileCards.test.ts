@@ -89,4 +89,45 @@ describe('buildCollectionFileCards', () => {
     expect(searched).toHaveLength(1);
     expect(searched[0]?.name).toBe('pack.zip');
   });
+  it('skips voice message audio so mp3 clips never show up as attachments', () => {
+    const conversations: Conversation[] = [
+      {
+        id: 'c-voice',
+        title: '语音',
+        collaboratorId: 'pharos',
+        pinnedAt: null,
+        updatedAt: 30,
+        messages: [
+          {
+            id: 'm-voice',
+            role: 'assistant',
+            content: '',
+            timestamp: 300,
+            attachments: [
+              {
+                id: 'a-voice',
+                assetId: 'asset-voice-1',
+                kind: 'file',
+                name: 'Polaris-voice-20261028.mp3',
+                mimeType: 'audio/mpeg',
+                size: 2048
+              },
+              {
+                id: 'a-doc',
+                assetId: 'asset-doc-1',
+                kind: 'file',
+                name: '报告.pdf',
+                mimeType: 'application/pdf',
+                size: 4096
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const cards = buildCollectionFileCards({ conversations, searchTerm: '' });
+
+    expect(cards.map((card) => card.name)).toEqual(['报告.pdf']);
+  });
 });

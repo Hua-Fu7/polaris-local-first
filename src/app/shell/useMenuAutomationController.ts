@@ -22,11 +22,15 @@ type MenuAutomationCopy = Pick<I18nTranslator, 't'>;
 
 export type MenuAutomationRuleSeed = {
   collaboratorId: string;
+  mode?: PolarisTriggerRule['mode'];
   conversationMode?: PolarisTriggerRule['target']['conversationMode'];
   conversationId?: string | null;
   schedule: PolarisTriggerSchedule;
   prompt: string;
   name?: string;
+  proactiveSettings?: PolarisTriggerRule['proactiveSettings'];
+  sourceMessageId?: string;
+  nextRunAt?: number | null;
 };
 
 type UseMenuAutomationControllerArgs = {
@@ -35,9 +39,13 @@ type UseMenuAutomationControllerArgs = {
   companionHost: PolarisCompanionHostState;
   createTriggerRule: (seed: {
     name?: string;
+    mode?: PolarisTriggerRule['mode'];
     schedule: PolarisTriggerSchedule;
     target: PolarisTriggerRule['target'];
     action: PolarisTriggerRule['action'];
+    proactiveSettings?: PolarisTriggerRule['proactiveSettings'];
+    sourceMessageId?: string;
+    nextRunAt?: number | null;
   }) => string;
   updateTriggerRule: (ruleId: string, patch: Partial<PolarisTriggerRule>) => void;
   deleteTriggerRule: (ruleId: string) => void;

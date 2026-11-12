@@ -25,6 +25,12 @@ export interface ChatMessage {
   origin?: 'user-input' | 'assistant-reply' | 'system-note' | 'tool-runtime' | 'trigger-runtime';
   requestRole?: 'user' | 'assistant' | 'system';
   requestContent?: string;
+  /**
+   * 请求面的送达保证。`'always'` 表示这条消息的 `requestContent` 必须进入每一次
+   * 模型请求，即使 provider 会对"易变 system 层"做省略（如 DeepSeek 的前缀缓存
+   * 省略策略）也要豁免送达——用于通话接通/结束这类模型必须知道的状态事实。
+   */
+  requestDelivery?: 'always';
   attachments?: ChatAttachment[];
   providerId?: string;
   providerName?: string;
@@ -32,6 +38,8 @@ export interface ChatMessage {
   tokenCount?: number;
   tokenUsage?: ChatTokenUsage;
   memoryEvidence?: ChatMemoryEvidence;
+  /** 这一轮从 Ombre-Brain 召回了什么；没开 OB 就是 undefined。 */
+  obRecall?: ChatObRecallEvidence;
   assistantName?: string;
   speakerCollaboratorId?: string;
   thinkingText?: string;
@@ -80,6 +88,26 @@ export type ChatMemoryEvidence = {
   strategy: 'none' | 'local_scan' | 'semantic_index';
   status: 'disabled' | 'not_configured' | 'empty' | 'within_budget' | 'trimmed_budget';
   items: ChatMemoryEvidenceItem[];
+};
+
+/**
+ * 一轮 OB 召回的落地结果，挂在助手消息上给界面显示。
+ *
+ * `status` 只有两种：搜到了（可能 0 条）和没搜成。没搜成也要显示，
+ * 否则用户以为开了 OB 在起作用，实际一次都没连上。
+ */
+export type ChatObRecallEvidence = {
+  status: 'ok' | 'failed';
+  count: number;
+  /** 失败原因（超时、密码错、连不上），成功时没有。 */
+  error?: string;
+  items: {
+    id: string;
+    name: string;
+    excerpt: string;
+    /** OB 给的排序分：用来判「这条到底相关不相关」。 */
+    score: number;
+  }[];
 };
 
 export type WorkspaceLedgerEvent =
@@ -234,5 +262,9 @@ export interface ChatAttachment {
   size: number;
   textContent?: string;
   clearedAt?: number;
+  sticker?: {
+    id: string;
+    name: string;
+  };
 }
 

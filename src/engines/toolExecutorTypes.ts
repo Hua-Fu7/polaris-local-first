@@ -72,6 +72,8 @@ import type {
   NativeCalendarQuery
 } from '../native/personalData';
 import type { EnvironmentDirectoryAction } from './environmentDirectory';
+import type { CalendarNote } from './calendar/calendarNotes';
+import type { CalendarUnreadChange } from './calendar/calendarInbox';
 
 export type SaveAttachmentToCollectionResult = ToolResult<{
   cardId: string;
@@ -190,6 +192,18 @@ export type ToolContext = {
     detailText: string;
     triggerRuleId: string;
   }>;
+  startVoiceCall: (
+    action: Extract<ToolAction, { kind: 'startVoiceCall' }>
+  ) => ToolResult<{
+    summary: string;
+    detailText: string;
+  }>;
+  hangUp: (
+    action: Extract<ToolAction, { kind: 'hangUp' }>
+  ) => ToolResult<{
+    summary: string;
+    detailText: string;
+  }>;
   inspectAttachments: (scope?: 'latest' | 'all', query?: string) => InspectAttachmentsResult;
   webSearch: (query: string, maxResults?: number) => Promise<WebSearchResult>;
   readWebPage: (url: string, maxChars?: number) => Promise<ReadWebPageResult>;
@@ -198,6 +212,27 @@ export type ToolContext = {
   createCalendarEvent: (draft: NativeCalendarEventDraft) => Promise<NativeCalendarMutationResult>;
   updateCalendarEvent: (patch: NativeCalendarEventPatch) => Promise<NativeCalendarMutationResult>;
   deleteCalendarEvent: (event: NativeCalendarEventDelete) => Promise<NativeCalendarMutationResult>;
+  readCalendarNotes?: (fromDate?: string, toDate?: string) => ToolResult<{
+    summary: string;
+    detailText: string;
+    notes: CalendarNote[];
+    unreadChanges: CalendarUnreadChange[];
+  }>;
+  writeCalendarNote?: (date: string, text: string) => ToolResult<{
+    summary: string;
+    detailText: string;
+    note: CalendarNote;
+  }>;
+  updateCalendarNote?: (noteId: string, text: string) => ToolResult<{
+    summary: string;
+    detailText: string;
+    note: CalendarNote;
+  }>;
+  deleteCalendarNote?: (noteId: string) => ToolResult<{
+    summary: string;
+    detailText: string;
+    noteId: string;
+  }>;
   inspectArchiveEntries: (target?: string, query?: string) => Promise<InspectArchiveEntriesResult>;
   readAttachmentText: (target?: string, maxChars?: number) => ReadAttachmentTextResult;
   readArchiveEntryText: (
@@ -217,6 +252,10 @@ export type ToolContext = {
   createQrCode: (text: string, fileName?: string) => Promise<CreateQrCodeResult>;
   generateImage: (prompt: string, title?: string) => Promise<GenerateImageAttachmentResult>;
   sendImageAttachment: (target?: string, title?: string) => Promise<SendImageAttachmentResult>;
+  sendVoiceMessage: (text: string) => ToolResult<{
+    summary: string;
+    detailText: string;
+  }>;
   inspectImageAsset: (target?: string) => Promise<InspectImageAssetResult>;
   extractImagePalette: (target?: string) => Promise<ExtractImagePaletteResult>;
   createImageVariant: (target?: string, options?: CreateImageVariantOptions) => Promise<CreateImageVariantResult>;

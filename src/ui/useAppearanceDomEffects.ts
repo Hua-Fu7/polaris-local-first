@@ -3,7 +3,7 @@ import type { AppAppearancePreference } from '../types/domain';
 
 type ResolvedAppearance = 'light' | 'dark';
 
-const DARK_THEME_COLOR = '#090b14';
+const DARK_THEME_COLOR = '#17171a';
 const LIGHT_THEME_COLOR = '#ffffff';
 const APPEARANCE_MEDIA_QUERY = '(prefers-color-scheme: dark)';
 const APPEARANCE_STORAGE_KEY = 'polaris-appearance-preference';

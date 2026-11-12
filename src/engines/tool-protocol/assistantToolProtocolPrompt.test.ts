@@ -108,7 +108,7 @@ describe('assistantToolProtocolPrompt', () => {
     expect(prompt).toContain('GitHub：初始化 MCP 服务 GitHub 失败');
   });
 
-  it('uses a short disabled-tool notice when the user turns off every toolbox group', () => {
+  it('keeps always-available calendar tools when the user turns off every toolbox group', () => {
     const sections = buildAssistantToolPromptSections({
       themeToolMode: 'off',
       toolEnforcementMode: 'normal',
@@ -127,7 +127,8 @@ describe('assistantToolProtocolPrompt', () => {
         memory: false,
         memoryRecall: false,
         memoryWrite: false,
-        proactive: false
+        proactive: false,
+        voice: false,voiceCall: false
       },
       mcpCatalogErrors: ['Example MCP failed'],
       activeCard: null,
@@ -135,14 +136,14 @@ describe('assistantToolProtocolPrompt', () => {
     });
     const prompt = sections.map((section) => section.content).join('\n');
 
-    expect(sections.map((section) => section.name)).toEqual(['tool_disabled_capability']);
-    expect(prompt).toContain('用户目前关闭了所有工具');
-    expect(prompt).toContain('不要假装能调用 Polaris 工具');
-    expect(prompt).toContain('提醒她到工具箱打开对应工具');
-    expect(prompt).not.toContain('如果用户只是普通聊天');
-    expect(prompt).not.toContain('MCP 状态：');
-    expect(prompt).not.toContain('工具目录：');
-    expect(prompt).not.toContain('协议 fallback：');
+    expect(sections.map((section) => section.name)).not.toContain('tool_disabled_capability');
+    expect(prompt).toContain('环境目录：');
+    expect(prompt).toContain('6. readCalendarNotes：读取 Polaris 日历便签');
+    expect(prompt).toContain('7. writeCalendarNote：以小机的身份');
+    expect(prompt).toContain('8. updateCalendarNote：修改已有');
+    expect(prompt).toContain('9. deleteCalendarNote：删除已有');
+    expect(prompt).not.toContain('用户目前关闭了所有工具');
+    expect(prompt).toContain('协议 fallback：');
   });
 
   it('keeps context snapshots aligned with actually visible tool groups', () => {

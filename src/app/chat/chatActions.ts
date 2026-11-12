@@ -16,6 +16,7 @@ import {
 } from './chatSendPerformanceTrace';
 import { selectChatConversations } from './liveConversationCatalog';
 import { reportPersistenceError } from '../../infrastructure/persistenceDiagnostics';
+import { removeMessageTurn } from './messageTurnRange';
 
 type CreateChatActionHandlersArgs = {
   startupReady: boolean;
@@ -207,6 +208,36 @@ export function createChatActionHandlers({
       collaboratorId: derived.activeCollaboratorSourceId ?? activeConversation.collaboratorId,
       messages: nextMessages
     });
+  };
+
+  /**
+   * 删掉一整轮：这条用户消息，加上它引出的全部回答，直到下一条用户消息之前为止。
+   * 后面的轮次原样保留，所以是从中间挖掉一段，不是把尾巴截断。
+   */
+  const deleteMessageTurn = async (message: ChatMessage) => {
+    const activeConversation = derived.activeConversation;
+    if (!activeConversation || ui.sending) return;
+
+    if (activeConversation.collaboratorId === null) {
+      ui.setCommandStatus('这条对话已经失去归属，只能查看历史，不能在原线程里删。', true);
+      return;
+    }
+    if (isCompanionCollaboratorId(activeConversation.collaboratorId)) {
+      ui.setCommandStatus('电脑端 companion 这轮还不支持在手机上删对话轮次。', true);
+      return;
+    }
+
+    const writableConversation = await store.chat.ensureConversationWritable(activeConversation.id);
+    if (!writableConversation) {
+      ui.setCommandStatus('读取当前对话历史失败，先别删，避免拿空历史重建。', true);
+      return;
+    }
+
+    const nextMessages = removeMessageTurn(writableConversation.messages, message.id);
+    if (!nextMessages) return;
+
+    store.chat.replaceConversationMessages(writableConversation, nextMessages);
+    ui.setCommandStatus('已删除这一轮对话。');
   };
 
   const updateAssistantMessage = async (message: ChatMessage, content: string) => {
@@ -402,6 +433,7 @@ export function createChatActionHandlers({
     handleSubmit,
     commitMessageEdit,
     retryLatestAssistant,
+    deleteMessageTurn,
     updateAssistantMessage,
     cacheAssistantSpeech,
     forkConversationFromMessage,

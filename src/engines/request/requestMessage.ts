@@ -18,6 +18,7 @@ export type RequestMessage = {
   content: string;
   timestamp: number;
   origin?: ChatMessage['origin'];
+  requestDelivery?: ChatMessage['requestDelivery'];
   thinkingText?: string;
   attachments?: RequestAttachment[];
   nativeToolCalls?: ChatNativeToolCall[];
@@ -50,12 +51,19 @@ export function toRequestMessage(message: ChatMessage): RequestMessage {
     };
   }
 
+  // requestContent 有的时候会被写成空串（例如失败重试、续写路径），
+  // 一旦为空就把真正给用户看的正文拿回来——否则模型会收到一条"空的用户消息"。
+  const requestBody = typeof message.requestContent === 'string' && message.requestContent.trim()
+    ? message.requestContent
+    : message.content;
+
   return {
     id: message.id,
     role: message.requestRole ?? message.role,
-    content: message.requestContent ?? message.content,
+    content: requestBody,
     timestamp: message.timestamp,
     origin: message.origin,
+    requestDelivery: message.requestDelivery,
     thinkingText: message.thinkingText,
     attachments: message.attachments as RequestAttachment[] | undefined,
     nativeToolCalls: message.nativeToolCalls,

@@ -110,12 +110,33 @@ export function resolveToolFollowupPlan(args: {
     return null;
   }
 
+  const hasOnlyStickerSendOutcome = args.outcomes.length > 0 && args.outcomes.every((outcome) =>
+    outcome.path === 'direct'
+    && outcome.status === 'executed'
+    && outcome.action.kind === 'sendImageAttachment'
+    && outcome.action.target?.trim().toLowerCase().startsWith('sticker:')
+  );
+  if (hasOnlyStickerSendOutcome && args.assistantToolOnlyTurn !== true) {
+    return null;
+  }
   const hasCompletedTaskOutcome = args.outcomes.some((outcome) =>
     outcome.path === 'direct'
     && outcome.status === 'executed'
     && outcome.action.kind === 'completeTask'
   );
   if (hasCompletedTaskOutcome && args.assistantToolOnlyTurn !== true) {
+    return null;
+  }
+
+  // 电话已经拨出去、正在等对方接/拒：别再让模型接着生成一段正文。
+  // 此刻该做的只有「等着」，接起来或没接，都由通话链路那一侧的事件来驱动，
+  // 模型在拨号成功后多说的每一句都会抢在来电响铃之前冒出来，反而像抢话。
+  const hasStartedVoiceCallOutcome = args.outcomes.some((outcome) =>
+    outcome.path === 'direct'
+    && outcome.status === 'executed'
+    && outcome.action.kind === 'startVoiceCall'
+  );
+  if (hasStartedVoiceCallOutcome) {
     return null;
   }
 

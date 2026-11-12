@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { assembleAssistantContext } from './requestContext';
 import { prepareConversationMessages } from './requestConversationPreparation';
 import type { RequestMessage } from './requestMessage';
@@ -44,7 +44,7 @@ describe('assembleAssistantContext', () => {
     });
   });
 
-  it('keeps stable prompt parts before memory and leaves dynamic context out of the latest user turn', () => {
+  it('keeps stable prompt parts before memory and appends dynamic context to the latest user turn', () => {
     const context = assembleAssistantContext({
       systemPromptParts: [
         {
@@ -89,8 +89,6 @@ describe('assembleAssistantContext', () => {
       'memory',
       'system',
       'history_summary',
-      'system',
-      'system',
       'conversation'
     ]);
     expect(context.segments.map((segment) => segment.messages[0]?.promptPartName ?? segment.kind)).toEqual([
@@ -99,13 +97,23 @@ describe('assembleAssistantContext', () => {
       'memory',
       'system',
       'history_summary',
-      'model_runtime_context',
-      'work_runtime_context',
-      'conversation'
+      'model_runtime_context'
     ]);
 
     const conversation = context.segments.find((segment) => segment.kind === 'conversation');
     expect(conversation?.messages).toEqual([
+      {
+        role: 'user',
+        content: expect.stringContaining('[以下是系统自动附带的'),
+        promptPartName: 'model_runtime_context',
+        promptPartLayer: 'context'
+      },
+      {
+        role: 'user',
+        content: expect.stringContaining('[以下是系统自动附带的'),
+        promptPartName: 'work_runtime_context',
+        promptPartLayer: 'context'
+      },
       {
         role: 'user',
         content: '看一下这个'
@@ -113,7 +121,7 @@ describe('assembleAssistantContext', () => {
     ]);
   });
 
-  it('keeps dynamic runtime context as a system segment without rewriting older history', () => {
+  it('appends dynamic runtime context to the latest user turn without rewriting older history', () => {
     const olderUser = createUserMessage({
       id: 'user-old',
       content: '昨天那个先放着',
@@ -140,13 +148,6 @@ describe('assembleAssistantContext', () => {
       messages: [olderUser, assistant, latestUser]
     });
 
-    expect(context.segments[0]?.messages[0]).toEqual({
-      role: 'system',
-      content: 'current model hint',
-      promptPartName: 'model_runtime_context',
-      promptPartLayer: 'context'
-    });
-
     const conversation = context.segments.find((segment) => segment.kind === 'conversation');
     expect(conversation?.messages).toEqual([
       {
@@ -158,6 +159,12 @@ describe('assembleAssistantContext', () => {
         content: '好，我先记住这个现场。',
         thinkingText: undefined,
         toolCalls: undefined
+      },
+      {
+        role: 'user',
+        content: expect.stringContaining('[以下是系统自动附带的'),
+        promptPartName: 'model_runtime_context',
+        promptPartLayer: 'context'
       },
       {
         role: 'user',
@@ -199,7 +206,7 @@ describe('assembleAssistantContext', () => {
       },
       {
         role: 'user',
-        content: expect.stringContaining('[本轮请求上下文，不是用户原话]'),
+        content: expect.stringContaining('[以下是系统自动附带的'),
         promptPartName: 'runtime_clock_context',
         promptPartLayer: 'context'
       },
@@ -1280,5 +1287,27 @@ describe('assembleAssistantContext', () => {
       targetLabel: undefined,
       error: originalError
     });
+  });
+
+  it('puts OB recall right before the latest user message and leaves it out when empty', () => {
+    const context = assembleAssistantContext({
+      messages: [createUserMessage()],
+      obRecallLines: ['养了一只猫，叫团子。', '讨厌香菜。']
+    });
+
+    const conversationSegment = context.segments.find((segment) => segment.kind === 'conversation');
+    const messages = conversationSegment?.messages ?? [];
+    // 最后一条是用户原话，它前面紧挨着就是 OB 召回块
+    const lastIndex = messages.length - 1;
+    expect(messages[lastIndex]?.content).toBe('看一下这个');
+    expect(messages[lastIndex - 1]?.content).toContain('[以下是系统自动附带的');
+    expect(messages[lastIndex - 1]?.content).toContain('养了一只猫，叫团子。');
+
+    const withoutRecall = assembleAssistantContext({
+      messages: [createUserMessage()],
+      obRecallLines: []
+    });
+    const plainMessages = withoutRecall.segments.find((segment) => segment.kind === 'conversation')?.messages ?? [];
+    expect(plainMessages).toHaveLength(1);
   });
 });

@@ -193,6 +193,7 @@ export function createPersonaTemplate(
       excludeFromGlobal: overrides.memory?.excludeFromGlobal ?? false,
       excludedGlobalIds: overrides.memory?.excludedGlobalIds ?? [],
       personalMemories: overrides.memory?.personalMemories ?? [],
+      coreMemories: overrides.memory?.coreMemories ?? [],
       referenceDocs: overrides.memory?.referenceDocs ?? []
     },
     advanced: {

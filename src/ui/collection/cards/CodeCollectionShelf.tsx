@@ -1,5 +1,6 @@
 import type { ChangeEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { COLLECTION_CREATE_EVENT } from '../../../app/shell/collectionCreateCommands';
 import { deriveCodeCardTitle, inferCodeLanguage, normalizeCodeLanguage } from '../../../engines/codeCardEngine';
 import type { ResolvedRoomProjectFile } from '../../../engines/roomProjects';
 import type { DesktopLocalCommandResult, DesktopLocalCommandSession } from '../../../desktop/localHost';
@@ -7,7 +8,9 @@ import type { CollectionFileCard } from '../../../app/collection/collectionFileC
 import type { CodeCard, Conversation, Persona, ProjectFile, RoomProject, WorkspaceReferenceDoc } from '../../../types/domain';
 import type { CodeTagFilter } from '../../../app/collection/codeCollectionFilterModel';
 import type { CodeCardSourceContext, CodeChatPromptSeed } from '../../../app/collection/codeCollectionSource';
-import { CodeCardGrid } from './CodeCardGrid';
+import { ArtifactRow } from '../artifact/ArtifactRow';
+import { resolveArtifactFileName, resolveArtifactKindLabel } from '../../../app/collection/artifactFileName';
+import { cleanDisplayText } from '../../text/displayText';
 import { FileCollectionSection } from '../files/FileCollectionSection';
 import { CodeCollectionEmptyState } from '../grid/CodeCollectionEmptyState';
 import { CollectionShelfLead } from '../grid/CollectionShelfLead';
@@ -49,6 +52,8 @@ type CodeCollectionShelfProps = {
   personas: Persona[];
   activeConversationId: string | null;
   fileCards: CollectionFileCard[];
+  /** 所有工作区里的文件（平铺），方便在文件页一次看完。 */
+  workspaceFiles?: { fileId: string; path: string; language: string; projectTitle: string; isEntry: boolean }[];
   hasStandaloneCards: boolean;
   activeCardId: string | null;
   spotlightCardId: string | null;
@@ -153,6 +158,7 @@ export function CodeCollectionShelf({
   personas,
   activeConversationId,
   fileCards,
+  workspaceFiles = [],
   hasStandaloneCards,
   activeCardId,
   spotlightCardId,
@@ -300,6 +306,7 @@ export function CodeCollectionShelf({
         label={createMenuOpen ? t('collection.code.closeCreate') : t('collection.code.createOrImport')}
         expanded={createMenuOpen}
         disabled={isAggregateScope || Boolean(workshopMode)}
+        triggerHidden
         onPress={() => setCreateMenuOpen((current) => !current)}
       >
         {createMenuOpen && !isAggregateScope && !workshopMode ? (
@@ -368,24 +375,47 @@ export function CodeCollectionShelf({
           helpText={t('collection.code.shelfHelp')}
         />
         <div className="code-collection-grid-stage">
-          <CodeCardGrid
-            cardsExpanded={cardsExpanded}
-            viewMode="cards"
-            leadingCard={undefined}
-            roomTags={roomTags}
-            cards={standaloneCards}
-            projectFiles={[]}
-            roomProjects={[]}
-            activeCardId={activeCardId}
-            spotlightCardId={spotlightCardId}
-            resolveOriginCopy={resolveOriginCopy}
-            onOpenProject={onOpenProject}
-            onOpenCard={onOpenEditableItem}
-            onRunCard={onRunCard}
-            onDeleteCard={onDeleteEditableItem}
-            onToggleCardPinned={onToggleCardPinned}
-            onToggleProjectPinned={onToggleProjectPinned}
-          />
+          {/* 作品改成一行一个（`</> 文件名 / code · HTML ↗`），跟工作区的目录一样，不再用卡片网格。 */}
+          {standaloneCards.length > 0 ? (
+            <div className="code-artifact-list">
+              {standaloneCards.map((card) => (
+                <ArtifactRow
+                  key={card.id}
+                  fileName={resolveArtifactFileName(card)}
+                  kindLabel={resolveArtifactKindLabel()}
+                  language={(card.language || 'text').toUpperCase()}
+                  active={card.id === activeCardId}
+                  spotlight={card.id === spotlightCardId}
+                  pinned={Boolean(card.pinnedAt)}
+                  activateLabel={t('collection.card.runAria', { title: cleanDisplayText(card.title) })}
+                  openLabel={t('collection.card.editAria', { title: cleanDisplayText(card.title) })}
+                  onActivate={() => onRunCard(card)}
+                  onOpen={() => onOpenEditableItem(card.id)}
+                  trailing={
+                    <>
+                      <button
+                        type="button"
+                        className={card.pinnedAt ? 'active' : ''}
+                        aria-label={card.pinnedAt
+                          ? t('collection.card.unpinAria', { title: cleanDisplayText(card.title) })
+                          : t('collection.card.pinAria', { title: cleanDisplayText(card.title) })}
+                        onClick={() => onToggleCardPinned(card.id)}
+                      >
+                        <Icon name="pin" size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t('collection.card.deleteAria', { title: cleanDisplayText(card.title) })}
+                        onClick={() => onDeleteEditableItem(card.id)}
+                      >
+                        <Icon name="trash" size={13} />
+                      </button>
+                    </>
+                  }
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
 
         {showCardsEmptyState ? (
@@ -395,6 +425,26 @@ export function CodeCollectionShelf({
             tagFilter={tagFilter}
             onOpenChat={onOpenChat}
           />
+        ) : null}
+
+        {workspaceFiles.length > 0 ? (
+          // 跟作品用同一个容器（.code-collection-grid-stage），左右缩进就一致了
+          <div className="code-collection-grid-stage">
+            <div className="code-artifact-list code-artifact-list--workspace">
+              <div className="code-artifact-list-lead">工作区文件</div>
+              {workspaceFiles.map((file) => (
+                <ArtifactRow
+                  key={file.fileId}
+                  fileName={file.path}
+                  kindLabel={file.projectTitle}
+                  language={(file.language || 'text').toUpperCase()}
+                  activateLabel={`打开 ${file.path}`}
+                  onActivate={() => onOpenProjectFileEditor(file.fileId)}
+                  onOpen={() => onOpenProjectFileEditor(file.fileId)}
+                />
+              ))}
+            </div>
+          </div>
         ) : null}
 
         {fileCards.length > 0 ? (

@@ -129,6 +129,7 @@ type RuntimePersistSnapshot = HydratedSnapshot & {
   imageGeneration: unknown;
   imageUnderstanding: unknown;
   voiceGeneration: unknown;
+  voiceTranscription: unknown;
   toolPromptPreferences: unknown;
   taskModeEnabled: boolean;
   mcpServers: unknown;
@@ -193,6 +194,7 @@ export function shouldPersistRuntimeState(state: RuntimePersistSnapshot, prevSta
     state.imageGeneration !== prevState.imageGeneration ||
     state.imageUnderstanding !== prevState.imageUnderstanding ||
     state.voiceGeneration !== prevState.voiceGeneration ||
+    state.voiceTranscription !== prevState.voiceTranscription ||
     state.toolPromptPreferences !== prevState.toolPromptPreferences ||
     state.taskModeEnabled !== prevState.taskModeEnabled ||
     state.mcpServers !== prevState.mcpServers ||

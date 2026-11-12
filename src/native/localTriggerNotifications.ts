@@ -7,6 +7,7 @@ import type {
   LocalNotificationSchema
 } from '@capacitor/local-notifications';
 import type { Persona, PolarisTriggerRule } from '../types/domain';
+import { buildTriggerNotificationBody } from '../engines/triggers';
 
 const POLARIS_TRIGGER_NOTIFICATION_KIND = 'polaris-trigger-v1';
 const POLARIS_TRIGGER_NOTIFICATION_CHANNEL_ID = 'polaris-triggers';
@@ -32,10 +33,19 @@ type PolarisTriggerAlarmNotification = {
   scheduledFor: number;
 };
 
+type PolarisTriggerAlarmFiredEvent = {
+  ruleId: string;
+  scheduledFor: number;
+};
+
 type PolarisTriggerAlarmPlugin = {
   sync(options: { notifications: PolarisTriggerAlarmNotification[] }): Promise<{ exactAlarm: 'granted' | 'denied' }>;
   checkExactAlarmSetting(): Promise<{ exactAlarm: 'granted' | 'denied' }>;
   openExactAlarmSettings(): Promise<{ exactAlarm: 'granted' | 'denied' }>;
+  addListener(
+    eventName: 'triggerFired',
+    listener: (event: PolarisTriggerAlarmFiredEvent) => void
+  ): Promise<PluginListenerHandle>;
 };
 
 type NativeTriggerNotificationExtra = {
@@ -104,7 +114,7 @@ export function buildNativeTriggerNotifications(
     return [{
       id: resolveTriggerNotificationId(rule.id),
       title: `${persona.name} 想找你`,
-      body: rule.name,
+      body: buildTriggerNotificationBody(rule),
       schedule: {
         at: new Date(rule.nextRunAt),
         allowWhileIdle: true
@@ -289,7 +299,9 @@ export async function postNativeProactiveReplyNotification(input: {
   preview: string;
   createdAt?: number;
 }): Promise<NativeTriggerNotificationSyncResult> {
-  if (!canUseLocalNotifications() || Capacitor.getPlatform() !== 'android') return 'unavailable';
+  // 这里不再限制平台。之前只在 Android 上发送，导致 iOS 永远收不到带真实回复内容的通知，
+  // 锁屏只能看到预排期闹钟那条占位文案。channelId 是 Android 专有概念，按平台决定是否带上。
+  if (!canUseLocalNotifications()) return 'unavailable';
 
   try {
     const permission = await LocalNotifications.checkPermissions();
@@ -302,7 +314,9 @@ export async function postNativeProactiveReplyNotification(input: {
         id: resolveProactiveReplyNotificationId(input.conversationId),
         title: input.collaboratorName,
         body: input.preview,
-        channelId: POLARIS_PROACTIVE_REPLY_NOTIFICATION_CHANNEL_ID,
+        ...(shouldUseAndroidNotificationChannel()
+          ? { channelId: POLARIS_PROACTIVE_REPLY_NOTIFICATION_CHANNEL_ID }
+          : {}),
         extra: {
           polarisKind: POLARIS_PROACTIVE_REPLY_NOTIFICATION_KIND,
           conversationId: input.conversationId,
@@ -329,4 +343,23 @@ export async function registerNativeTriggerNotificationTapListener(
     const tap = extractNativeTriggerNotificationTap(action);
     if (tap) onTap(tap);
   });
+}
+
+/**
+ * 监听原生精确闹钟到点信号。PolarisTriggerAlarmReceiver 被系统唤醒后会广播该事件，
+ * 前端收到后应立刻做一次到期扫描（wakeTick），驱动"决策层 + 生成真实回复"。
+ * 仅在 Android + 原生插件可用时生效，其余平台返回 null。
+ */
+export async function registerNativeTriggerFiredListener(
+  onFired: (event: { ruleId: string; scheduledFor: number }) => void
+): Promise<PluginListenerHandle | null> {
+  if (!canUseAndroidTriggerAlarm()) return null;
+
+  try {
+    return await PolarisTriggerAlarm.addListener('triggerFired', (event) => {
+      onFired({ ruleId: event.ruleId ?? '', scheduledFor: event.scheduledFor ?? 0 });
+    });
+  } catch {
+    return null;
+  }
 }

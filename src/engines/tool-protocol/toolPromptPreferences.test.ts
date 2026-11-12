@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_POLARIS_TOOL_PROMPT_PREFERENCES,
   POLARIS_TOOL_PROMPT_GROUP_DESCRIPTIONS,
+  POLARIS_TOOL_PROMPT_GROUP_LABELS,
   POLARIS_TOOL_PROMPT_GROUP_ORDER,
   POLARIS_TOOLBOX_PROMPT_GROUP_ORDER
 } from './toolPromptPreferences';
@@ -35,5 +37,13 @@ describe('toolPromptPreferences', () => {
     expect(POLARIS_TOOL_PROMPT_GROUP_DESCRIPTIONS.environment).toContain('当前环境目录');
     expect(POLARIS_TOOLBOX_PROMPT_GROUP_ORDER).toContain('knowledge');
     expect(POLARIS_TOOL_PROMPT_GROUP_DESCRIPTIONS.knowledge).toContain('不知道怎么使用北极星');
+  });
+
+  it('ships the voice group on by default with its own label and description', () => {
+    expect(POLARIS_TOOL_PROMPT_GROUP_ORDER).toContain('voice');
+    expect(POLARIS_TOOLBOX_PROMPT_GROUP_ORDER).toContain('voice');
+    expect(DEFAULT_POLARIS_TOOL_PROMPT_PREFERENCES.voice).toBe(true);
+    expect(POLARIS_TOOL_PROMPT_GROUP_LABELS.voice).toBe('语音');
+    expect(POLARIS_TOOL_PROMPT_GROUP_DESCRIPTIONS.voice).toContain('允许');
   });
 });

@@ -1,4 +1,4 @@
-import type { AssistantToolContext } from '../assistantToolProtocol';
+﻿import type { AssistantToolContext } from '../assistantToolProtocol';
 import { buildAssistantToolPromptSections } from '../tool-protocol/assistantToolProtocolPrompt';
 import type { AssistantPromptPart } from './requestAudit';
 import type { ChatMessage } from '../../types/domain';
@@ -8,6 +8,7 @@ import type { AssistantToolPromptSectionName } from '../tool-protocol/assistantT
 const TOOL_CONTEXT_SECTION_NAMES = new Set<AssistantToolPromptSectionName>([
   'tool_context_capability',
   'ui_context_capability',
+  'xinchao_context_capability',
   'attachment_context_capability',
   'desktop_local_context_capability',
   'room_context_capability',

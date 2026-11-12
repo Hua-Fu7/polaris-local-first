@@ -437,9 +437,13 @@ export type ChatToolStoreBindings = {
     setTaskModeEnabled: (enabled: boolean) => void;
     createTriggerRule: (seed: {
       name?: string;
+      mode?: PolarisTriggerRule['mode'];
       schedule: PolarisTriggerSchedule;
       target: PolarisTriggerTarget;
       action: PolarisTriggerAction;
+      proactiveSettings?: PolarisTriggerRule['proactiveSettings'];
+      sourceMessageId?: string;
+      nextRunAt?: number | null;
     }) => string;
     updateTriggerRule: (ruleId: string, patch: Partial<PolarisTriggerRule>) => void;
     deleteTriggerRule: (ruleId: string) => void;

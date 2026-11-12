@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildAssistantPromptParts } from './requestPromptLayers';
+import type { CanonicalProviderReasoningMode } from '../provider-runtime/providerRuntimeTypes';
 
 describe('buildAssistantPromptParts', () => {
   it('prepends system identity before persona and capability layers', () => {
@@ -336,5 +337,35 @@ describe('buildAssistantPromptParts', () => {
     expect(workRuntime?.content).toContain('只读，不要求你维护 task 账本');
     expect(workRuntime?.content).not.toContain('隐藏的 `polaris-task` JSON 代码块');
     expect(workRuntime?.content).not.toContain('当前任务账本');
+  });
+
+  it('不再注入内联思考层（与上游一致，模型自行写 <think> 不可靠）', () => {
+    // 曾经在「线路没有原生思考」时要求模型把推理写进 <think>，实际效果是模型在思考里
+    // 复述对话、评论系统上下文，反而更乱。上游没有这层，这里钉住「不注入」。
+    for (const reasoningMode of ['none', 'hidden', 'text', 'summary', 'signature-required', undefined] as const) {
+      expect(
+        buildAssistantPromptParts({
+          personaPrompt: '你是一个温柔的协作者。',
+          personaPromptSource: 'custom',
+          templateContext: {
+            cur_date: '2026-04-06',
+            cur_time: '05:00',
+            cur_datetime: '2026-04-06 05:00:00',
+            timezone: 'Asia/Shanghai',
+            model_id: 'test-model',
+            model_name: 'test-model',
+            locale: 'zh-CN',
+            system_version: 'test',
+            device_info: 'test',
+            battery_level: '100%',
+            nickname: '用户',
+            user_name: '用户',
+            assistant_name: 'Pharos'
+          },
+          reasoningMode,
+          messages: []
+        }).find((part) => part.name === 'inline_thinking_capability')
+      ).toBeUndefined();
+    }
   });
 });

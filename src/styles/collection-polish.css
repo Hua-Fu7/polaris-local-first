@@ -89,13 +89,8 @@
 .actionable-card,
 .code-card-run-dot,
 .chip,
-.shelf-tab,
-.world-switch-veil {
+.shelf-tab {
   -webkit-tap-highlight-color: transparent;
-}
-
-.world-switch-veil {
-  touch-action: pan-y;
 }
 
 .code-card-run-dot {

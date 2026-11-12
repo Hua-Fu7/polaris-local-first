@@ -108,6 +108,8 @@ type BuildTopbarPropsArgs = {
   collaboratorSwitchOpen: boolean;
   collectionShelf: CollectionShelf;
   searchOpen: boolean;
+  /** chat 世界：对话内搜索面板是否打开。 */
+  chatSearchOpen: boolean;
   collectionInfoFullscreenOpen: boolean;
   menuOpen: boolean;
   activeThemePreview: ActiveThemePreview;
@@ -117,6 +119,7 @@ type BuildTopbarPropsArgs = {
   openSettings: () => void;
   openPreviewChat: () => void;
   setSearchOpen: (next: boolean | ((prev: boolean) => boolean)) => void;
+  setChatSearchOpen: (next: boolean | ((prev: boolean) => boolean)) => void;
   setCollaboratorSwitchOpen: (next: boolean | ((prev: boolean) => boolean)) => void;
   setCollectionInfoFullscreenOpen: (next: boolean | ((prev: boolean) => boolean)) => void;
 };
@@ -134,6 +137,7 @@ export function buildTopbarProps({
   collaboratorSwitchOpen,
   collectionShelf,
   searchOpen,
+  chatSearchOpen,
   collectionInfoFullscreenOpen,
   menuOpen,
   activeThemePreview,
@@ -143,6 +147,7 @@ export function buildTopbarProps({
   openSettings,
   openPreviewChat,
   setSearchOpen,
+  setChatSearchOpen,
   setCollaboratorSwitchOpen,
   setCollectionInfoFullscreenOpen
 }: BuildTopbarPropsArgs) {
@@ -160,6 +165,7 @@ export function buildTopbarProps({
       collaboratorSwitchOpen,
       collectionShelf,
       searchOpen,
+      chatSearchOpen,
       collectionInfoFullscreenOpen,
       menuOpen,
       activeThemePreview
@@ -168,16 +174,25 @@ export function buildTopbarProps({
       onToggleWorld: toggleWorld,
       onToggleCollaboratorSwitch: () => {
         setSearchOpen(false);
+        setChatSearchOpen(false);
         setCollaboratorSwitchOpen((prev) => !prev);
       },
       onCreateConversation: createConversation,
       onToggleSearch: () => {
         setCollaboratorSwitchOpen(false);
+        setChatSearchOpen(false);
         setSearchOpen((prev) => !prev);
+      },
+      onToggleChatSearch: () => {
+        setCollaboratorSwitchOpen(false);
+        setSearchOpen(false);
+        setCollectionInfoFullscreenOpen(false);
+        setChatSearchOpen((prev) => !prev);
       },
       onOpenCollectionInfoFullscreen: () => {
         setCollaboratorSwitchOpen(false);
         setSearchOpen(false);
+        setChatSearchOpen(false);
         setCollectionInfoFullscreenOpen((current) => !current);
       },
       onToggleMenu: toggleMenu,
@@ -192,6 +207,8 @@ type BuildChatWorldPropsArgs = {
   isWorldSwitching: boolean;
   openToolbox: () => void;
   openProviderSettings: () => void;
+  chatSearchOpen: boolean;
+  closeChatSearch: () => void;
 };
 
 export function buildChatWorldProps<TUi>({
@@ -199,6 +216,8 @@ export function buildChatWorldProps<TUi>({
   isWorldSwitching,
   openToolbox,
   openProviderSettings,
+  chatSearchOpen,
+  closeChatSearch,
   ui
 }: BuildChatWorldPropsArgs & { ui: TUi }) {
   return {
@@ -207,6 +226,10 @@ export function buildChatWorldProps<TUi>({
       isWorldSwitching,
       openToolbox,
       openProviderSettings
+    },
+    search: {
+      open: chatSearchOpen,
+      onClose: closeChatSearch
     },
     ui
   };

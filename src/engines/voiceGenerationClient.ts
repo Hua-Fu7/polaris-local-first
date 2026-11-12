@@ -138,7 +138,10 @@ export function buildVoiceGenerationEndpoint(
   }
   if (providerType === 'elevenlabs') {
     const voice = resolveElevenLabsVoiceName(settings?.voice);
-    return buildApiEndpoint(baseUrl, `${normalizeElevenLabsBasePath(settings.path ?? '')}/${encodePathSegment(voice)}`);
+    const elevenBase = /^https?:\/\/api\.elevenlabs\.io\/?$/i.test(baseUrl)
+      ? `${baseUrl.replace(/\/+$/, '')}/v1`
+      : baseUrl;
+    return buildApiEndpoint(elevenBase, `${normalizeElevenLabsBasePath(settings.path ?? '')}/${encodePathSegment(voice)}`);
   }
   if (providerType === 'fishaudio') {
     return buildApiEndpoint(baseUrl, normalizeFishAudioVoicePath(settings.path ?? ''));

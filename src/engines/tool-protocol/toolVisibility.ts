@@ -22,6 +22,7 @@ export type ToolVisibilityState = {
   themeMode: NonNullable<AssistantToolContext['themeToolMode']>;
   enabled: AssistantToolContext['enabledToolGroups'];
   toolEnforcementScope: AssistantToolContext['toolEnforcementScope'];
+  stickerSnapshot: AssistantToolContext['stickerSnapshot'];
 };
 
 export type PolarisToolVisibilityContext = Partial<Pick<
@@ -38,6 +39,7 @@ export type PolarisToolVisibilityContext = Partial<Pick<
   | 'memorySearchAvailable'
   | 'attachmentSnapshot'
   | 'imageAssetSnapshot'
+  | 'stickerSnapshot'
   | 'desktopLocalHost'
   | 'personalData'
 >> & {
@@ -88,6 +90,12 @@ function matchesThemeMode(tool: PolarisToolDefinition, state: ToolVisibilityStat
 }
 
 function isEnabledByPreferences(tool: PolarisToolDefinition, state: ToolVisibilityState) {
+  if (tool.alwaysAvailable) {
+    return state.toolEnforcementScope !== 'theme-only';
+  }
+  if (tool.name === 'sendImageAttachment' && (state.stickerSnapshot?.available.length ?? 0) > 0) {
+    return state.toolEnforcementScope !== 'theme-only';
+  }
   if (tool.group === 'project' && state.userContext === 'in-workspace') {
     return state.toolEnforcementScope !== 'theme-only';
   }
@@ -155,7 +163,8 @@ export function resolveToolVisibilityState(
     taskStage: resolveTaskStage({ context, userContext }),
     themeMode: context?.themeToolMode ?? 'stable',
     enabled: context?.enabledToolGroups,
-    toolEnforcementScope: context?.toolEnforcementScope
+    toolEnforcementScope: context?.toolEnforcementScope,
+    stickerSnapshot: context?.stickerSnapshot
   };
 }
 

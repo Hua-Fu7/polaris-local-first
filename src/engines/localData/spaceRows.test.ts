@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import type { AppCustomization, SavedSkin, ThemeState } from '../../types/domain';
 import { DEFAULT_APP_CUSTOMIZATION } from '../../stores/runtimeStoreCustomization';
 import { createInitialThemeState } from '../../stores/spaceStoreTheme';

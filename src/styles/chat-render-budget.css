@@ -154,12 +154,22 @@
 .world-chat.timeline-heavy .chat-flow { gap: 11px; }
 
 .world-chat.timeline-dense .system-inline-note,
-.world-chat.timeline-dense .tool-event,
 .world-chat.timeline-dense .chat-jump-latest-btn,
 .world-chat.timeline-dense .thinking-box {
   background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
   backdrop-filter: none;
   box-shadow: 0 6px 12px color-mix(in srgb, var(--accent-soft) 4%, transparent);
+}
+
+/* MCP / 工具调用胶囊：底色跟随聊天背景，只靠描边 + 阴影做出凸起感 */
+.world-chat.timeline-dense .tool-event {
+  border-color: color-mix(in srgb, var(--text) 13%, transparent);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.72) inset,
+    0 1px 2px color-mix(in srgb, var(--text) 7%, transparent),
+    0 6px 14px color-mix(in srgb, var(--text) 5%, transparent);
 }
 
 .world-chat.timeline-dense .message-code-peek,
@@ -221,6 +231,7 @@
   background: color-mix(in srgb, var(--surface-solid) 90%, transparent);
 }
 
+.world-chat.timeline-dense .message-inline-actions .micro-action-btn,
 .world-chat.timeline-heavy .message-inline-actions .micro-action-btn {
   background: transparent;
   border-color: transparent;

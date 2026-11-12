@@ -136,7 +136,13 @@ Search:
 
 ```bash
 BRAVE_SEARCH_API_KEY=
+BOCHA_API_KEY=
+TAVILY_API_KEY=
+GITHUB_TOKEN=
+GITHUB_API_BASE_URL=
 ```
+
+Search keys are optional when the client sends a key in the request. Server-side keys act as fallbacks. `GITHUB_TOKEN` is recommended when Polaris needs to read GitHub repository, file, issue, or pull-request links; `GITHUB_API_BASE_URL` can point at a GitHub API proxy when the default API host is unreachable.
 
 Cloudflare Worker:
 

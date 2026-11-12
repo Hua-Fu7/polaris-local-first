@@ -202,33 +202,33 @@
 html[data-polaris-appearance='dark'] {
   color-scheme: dark;
 
-  --bg: linear-gradient(180deg, #090b10 0%, #0d1018 58%, #111622 100%) !important;
-  --warm-bg: linear-gradient(180deg, #0a0b10 0%, #10121a 58%, #151923 100%) !important;
-  --warm-surface: rgba(24, 27, 38, 0.72) !important;
-  --warm-surface-solid: #171a24 !important;
-  --warm-surface-deep: rgba(14, 16, 24, 0.92) !important;
-  --warm-border: rgba(235, 220, 190, 0.12) !important;
-  --warm-border-hover: rgba(235, 220, 190, 0.26) !important;
-  --warm-text: #f2eadf !important;
-  --warm-text-soft: #c9bdad !important;
-  --warm-text-muted: #8f8679 !important;
-  --warm-accent: #d8b46f !important;
-  --warm-accent-soft: rgba(216, 180, 111, 0.14) !important;
-  --warm-accent-glow: rgba(216, 180, 111, 0.2) !important;
+  --bg: linear-gradient(180deg, #17171a 0%, #1c1c20 58%, #212126 100%) !important;
+  --warm-bg: linear-gradient(180deg, #18181b 0%, #1e1e22 58%, #232328 100%) !important;
+  --warm-surface: rgba(42, 42, 46, 0.72) !important;
+  --warm-surface-solid: #2c2c31 !important;
+  --warm-surface-deep: rgba(26, 26, 30, 0.92) !important;
+  --warm-border: rgba(235, 235, 240, 0.12) !important;
+  --warm-border-hover: rgba(235, 235, 240, 0.26) !important;
+  --warm-text: #ededf0 !important;
+  --warm-text-soft: #b8b8be !important;
+  --warm-text-muted: #83838b !important;
+  --warm-accent: #b6b6bd !important;
+  --warm-accent-soft: rgba(182, 182, 189, 0.16) !important;
+  --warm-accent-glow: rgba(182, 182, 189, 0.22) !important;
 
-  --chat-bg: linear-gradient(168deg, #080a10 0%, #10131d 48%, #151b29 100%) !important;
-  --cool-bg: linear-gradient(168deg, #080a10 0%, #10131d 48%, #151b29 100%) !important;
-  --cool-surface: rgba(22, 26, 39, 0.72) !important;
-  --cool-surface-solid: #161a27 !important;
-  --cool-surface-deep: rgba(12, 15, 24, 0.94) !important;
-  --cool-border: rgba(214, 226, 255, 0.12) !important;
-  --cool-border-hover: rgba(214, 226, 255, 0.26) !important;
-  --cool-text: #eef3ff !important;
-  --cool-text-soft: #bcc7dc !important;
-  --cool-text-muted: #7f8aa0 !important;
-  --cool-accent: #91c7ff !important;
-  --cool-accent-soft: rgba(145, 199, 255, 0.14) !important;
-  --cool-accent-glow: rgba(145, 199, 255, 0.2) !important;
+  --chat-bg: linear-gradient(168deg, #191919 0%, #1f1f22 48%, #252528 100%) !important;
+  --cool-bg: linear-gradient(168deg, #191919 0%, #1f1f22 48%, #252528 100%) !important;
+  --cool-surface: rgba(42, 42, 46, 0.72) !important;
+  --cool-surface-solid: #2c2c30 !important;
+  --cool-surface-deep: rgba(26, 26, 29, 0.94) !important;
+  --cool-border: rgba(226, 226, 232, 0.12) !important;
+  --cool-border-hover: rgba(226, 226, 232, 0.26) !important;
+  --cool-text: #eeeef1 !important;
+  --cool-text-soft: #bcbcc2 !important;
+  --cool-text-muted: #85858c !important;
+  --cool-accent: #b6b6bd !important;
+  --cool-accent-soft: rgba(182, 182, 189, 0.16) !important;
+  --cool-accent-glow: rgba(182, 182, 189, 0.22) !important;
 
   --surface: var(--warm-surface) !important;
   --surface-solid: var(--warm-surface-solid) !important;
@@ -241,12 +241,12 @@ html[data-polaris-appearance='dark'] {
   --accent: var(--warm-accent) !important;
   --accent-soft: var(--warm-accent-soft) !important;
   --accent-glow: var(--warm-accent-glow) !important;
-  --card-bg: linear-gradient(140deg, rgba(27, 31, 44, 0.92) 0%, rgba(19, 22, 32, 0.94) 62%, rgba(13, 16, 24, 0.96) 100%) !important;
-  --shadow: 0 16px 34px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(235, 220, 190, 0.08) !important;
-  --shadow-hover: 0 22px 46px rgba(0, 0, 0, 0.36), 0 0 0 1px rgba(235, 220, 190, 0.16) !important;
+  --card-bg: linear-gradient(140deg, rgba(48, 48, 53, 0.92) 0%, rgba(37, 37, 41, 0.94) 62%, rgba(29, 29, 33, 0.96) 100%) !important;
+  --shadow: 0 16px 34px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(235, 235, 240, 0.07) !important;
+  --shadow-hover: 0 22px 46px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(235, 235, 240, 0.14) !important;
 
-  --bubble-user: linear-gradient(135deg, rgba(145, 199, 255, 0.18) 0%, rgba(145, 199, 255, 0.08) 100%) !important;
-  --bubble-ai: linear-gradient(135deg, rgba(22, 26, 39, 0.92) 0%, rgba(14, 17, 26, 0.9) 100%) !important;
+  --bubble-user: linear-gradient(135deg, rgba(92, 92, 100, 0.62) 0%, rgba(74, 74, 82, 0.5) 100%) !important;
+  --bubble-ai: linear-gradient(135deg, rgba(40, 40, 44, 0.92) 0%, rgba(30, 30, 34, 0.9) 100%) !important;
   --chat-bubble-user-border: 1px solid color-mix(in srgb, var(--cool-border-hover) 92%, transparent) !important;
   --chat-bubble-user-shadow: 0 8px 22px rgba(0, 0, 0, 0.22) !important;
   --chat-system-note-fill: linear-gradient(180deg, color-mix(in srgb, var(--cool-surface) 42%, transparent) 0%, color-mix(in srgb, var(--cool-surface-deep) 34%, transparent) 100%) !important;
@@ -265,8 +265,8 @@ html[data-polaris-appearance='dark'] {
   --chat-preview-strip-fill: linear-gradient(180deg, color-mix(in srgb, var(--cool-surface) 34%, transparent) 0%, color-mix(in srgb, var(--cool-surface-deep) 24%, transparent) 100%) !important;
   --chat-preview-strip-border: 1px solid color-mix(in srgb, var(--cool-border) 38%, transparent) !important;
   --chat-preview-strip-shadow: 0 8px 18px rgba(0, 0, 0, 0.12) !important;
-  --chat-send-active-fill: linear-gradient(135deg, var(--cool-accent), color-mix(in srgb, var(--cool-accent) 72%, #d8b46f 28%)) !important;
-  --chat-send-active-text: #08101c !important;
+  --chat-send-active-fill: linear-gradient(135deg, #c8c8cf, #a8a8b0) !important;
+  --chat-send-active-text: #1c1c20 !important;
 
   --sheet-surface-fill: linear-gradient(180deg, color-mix(in srgb, var(--surface-solid) 94%, rgba(255,255,255,0.04)), color-mix(in srgb, var(--surface-deep) 90%, var(--surface-solid))) !important;
   --sheet-surface-border: 1px solid color-mix(in srgb, var(--border) 84%, rgba(255,255,255,0.08)) !important;

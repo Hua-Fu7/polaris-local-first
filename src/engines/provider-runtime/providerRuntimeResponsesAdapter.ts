@@ -123,7 +123,7 @@ function resolveResponsesReasoningEffort(thinkingBudget: number) {
 }
 
 export function buildResponsesRequest(input: ProviderRuntimeRequestInput) {
-  const { api, context, sessionId, advanced, bodyOverrides } = input;
+  const { api, context, sessionId, advanced, bodyOverrides, forceToolChoice = false } = input;
   const endpoint = buildApiEndpoint(api.baseUrl, api.path);
   const {
     apiKey,
@@ -171,7 +171,9 @@ export function buildResponsesRequest(input: ProviderRuntimeRequestInput) {
       description: tool.function.description,
       parameters: tool.function.parameters
     }));
-    const toolChoice = resolveOpenAiToolChoice(context.toolChoice, providerCapability);
+    const toolChoice = resolveOpenAiToolChoice(context.toolChoice, providerCapability, {
+      forceRequired: forceToolChoice
+    });
     if (toolChoice) {
       body.tool_choice = toolChoice;
     }

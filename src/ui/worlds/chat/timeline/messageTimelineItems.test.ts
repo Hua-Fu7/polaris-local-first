@@ -76,6 +76,65 @@ describe('buildTimelineRenderItems', () => {
     expect(items[1]?.isTerminalAssistantInUserTurn).toBe(true);
   });
 
+  it('merges thoughts and tools into one chronological timeline per user turn', () => {
+    const user = buildMessage({
+      id: 'user-1',
+      role: 'user',
+      content: '先搜索再回答'
+    });
+    const assistant1 = buildMessage({
+      id: 'assistant-1',
+      role: 'assistant',
+      content: '',
+      thinkingText: '先确认方向。'
+    });
+    const search = buildMessage({
+      id: 'tool-1',
+      role: 'system',
+      origin: 'tool-runtime',
+      content: '已找到 5 条网页结果',
+      toolInvocation: {
+        id: 'tool-1',
+        kind: 'webSearch',
+        status: 'executed',
+        title: '联网搜索',
+        summary: '搜索网页结果',
+        originMessageId: 'assistant-1'
+      }
+    });
+    const assistant2 = buildMessage({
+      id: 'assistant-2',
+      role: 'assistant',
+      content: '',
+      thinkingText: '结果够用了，继续整理。'
+    });
+    const nextUser = buildMessage({
+      id: 'user-2',
+      role: 'user',
+      content: '继续'
+    });
+    const assistant3 = buildMessage({
+      id: 'assistant-3',
+      role: 'assistant',
+      content: '好。',
+      thinkingText: '开始下一轮。'
+    });
+
+    const items = buildTimelineRenderItems([user, assistant1, search, assistant2, nextUser, assistant3]);
+    const firstReply = items.find((item) => item.message.id === 'assistant-1');
+    const secondReply = items.find((item) => item.message.id === 'assistant-2');
+    const nextTurnReply = items.find((item) => item.message.id === 'assistant-3');
+
+    expect(firstReply?.thinkingTimelineMessages.map((message) => message.id))
+      .toEqual(['assistant-1', 'tool-1', 'assistant-2']);
+    expect(firstReply?.ownsThinkingTimeline).toBe(true);
+    expect(secondReply?.thinkingTimelineMessages.map((message) => message.id))
+      .toEqual(['assistant-1', 'tool-1', 'assistant-2']);
+    expect(secondReply?.ownsThinkingTimeline).toBe(false);
+    expect(nextTurnReply?.thinkingTimelineMessages.map((message) => message.id))
+      .toEqual(['assistant-3']);
+    expect(nextTurnReply?.ownsThinkingTimeline).toBe(true);
+  });
   it('keeps runtime tool messages standalone when no assistant origin exists', () => {
     const tool = buildMessage({
       id: 'tool-1',
@@ -139,3 +198,4 @@ describe('buildTimelineRenderItems', () => {
     expect(items[2]?.isTerminalAssistantInUserTurn).toBe(true);
   });
 });
+

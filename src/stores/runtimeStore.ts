@@ -17,8 +17,10 @@ import type {
   ImageGenerationSettings,
   ImageUnderstandingSettings,
   MemoryVectorRetrievalSettings,
+  ObBrainSettings,
   ProviderProfile,
   VoiceGenerationSettings,
+  VoiceTranscriptionSettings,
   WebDavConfig,
   WebSearchConfig
 } from '../types/domain';
@@ -32,6 +34,10 @@ import {
   selectActiveProvider,
   selectVisibleActiveProvider
 } from './runtimeStoreProviders';
+import {
+  DEFAULT_OB_BRAIN_SETTINGS,
+  mergeObBrainSettings
+} from './runtimeStoreObBrain';
 import { hydrateFromDb, persistToDb } from './runtimeStorePersistence';
 import { DEFAULT_RUNTIME_TOOLBOX_STATE } from './runtimeStoreToolbox';
 import { DEFAULT_WEBDAV_CONFIG, mergeWebDavPatch } from './runtimeStoreWebDav';
@@ -79,6 +85,10 @@ import {
   DEFAULT_VOICE_GENERATION_SETTINGS,
   mergeVoiceGenerationSettings
 } from './runtimeStoreVoiceGeneration';
+import {
+  DEFAULT_VOICE_TRANSCRIPTION_SETTINGS,
+  mergeVoiceTranscriptionSettings
+} from './runtimeStoreVoiceTranscription';
 
 export type RuntimeState = {
   providers: ProviderProfile[];
@@ -87,9 +97,11 @@ export type RuntimeState = {
   search: WebSearchConfig;
   conversationSummaryModel: ConversationSummaryModelSettings;
   memoryVectorRetrieval: MemoryVectorRetrievalSettings;
+  obBrain: ObBrainSettings;
   imageGeneration: ImageGenerationSettings;
   imageUnderstanding: ImageUnderstandingSettings;
   voiceGeneration: VoiceGenerationSettings;
+  voiceTranscription: VoiceTranscriptionSettings;
   toolPromptPreferences: Record<PolarisToolPromptGroup, boolean>;
   taskModeEnabled: boolean;
   mcpServers: McpServerConfig[];
@@ -105,9 +117,11 @@ export type RuntimeState = {
   setSearchConfig: (patch: Partial<WebSearchConfig>) => void;
   setConversationSummaryModel: (patch: Partial<ConversationSummaryModelSettings>) => void;
   setMemoryVectorRetrieval: (patch: Partial<MemoryVectorRetrievalSettings>) => void;
+  setObBrain: (patch: Partial<ObBrainSettings>) => void;
   setImageGeneration: (patch: Partial<ImageGenerationSettings>) => void;
   setImageUnderstanding: (patch: Partial<ImageUnderstandingSettings>) => void;
   setVoiceGeneration: (patch: Partial<VoiceGenerationSettings>) => void;
+  setVoiceTranscription: (patch: Partial<VoiceTranscriptionSettings>) => void;
   setToolPromptGroupEnabled: (group: PolarisToolPromptGroup, enabled: boolean) => void;
   setTaskModeEnabled: (enabled: boolean) => void;
   setCompanionHost: (patch: Partial<PolarisCompanionHostState>) => void;
@@ -118,15 +132,19 @@ export type RuntimeState = {
   setCompanionSnapshot: (connectionId: string, snapshot: PolarisCompanionSnapshot | null) => void;
   createTriggerRule: (seed: {
     name?: string;
+    mode?: PolarisTriggerRule['mode'];
     schedule: PolarisTriggerSchedule;
     target: PolarisTriggerTarget;
     action: PolarisTriggerAction;
+    proactiveSettings?: PolarisTriggerRule['proactiveSettings'];
+    sourceMessageId?: string;
+    nextRunAt?: number | null;
   }) => string;
   updateTriggerRule: (ruleId: string, patch: Partial<PolarisTriggerRule>) => void;
   deleteTriggerRule: (ruleId: string) => void;
   enqueueTriggerEvent: (seed: { ruleId: string; prompt?: string | null; source: RuntimeTriggerEvent['source'] }) => string;
   consumeTriggerEvent: (ruleId: string) => RuntimeTriggerEvent | null;
-  markTriggerFired: (ruleId: string, runAt?: number) => void;
+  markTriggerFired: (ruleId: string, runAt?: number, lastActivityAt?: number | null) => void;
   markTriggerFailed: (ruleId: string, error: string, runAt?: number) => void;
   setMcpServers: (servers: McpServerConfig[]) => void;
   createMcpServer: (seed?: Partial<McpServerConfig>) => string;
@@ -191,6 +209,9 @@ export const useRuntimeStore = create<RuntimeState>((set, get) => ({
   memoryVectorRetrieval: {
     ...DEFAULT_MEMORY_VECTOR_RETRIEVAL_SETTINGS
   },
+  obBrain: {
+    ...DEFAULT_OB_BRAIN_SETTINGS
+  },
   imageGeneration: {
     ...DEFAULT_IMAGE_GENERATION_SETTINGS
   },
@@ -199,6 +220,9 @@ export const useRuntimeStore = create<RuntimeState>((set, get) => ({
   },
   voiceGeneration: {
     ...DEFAULT_VOICE_GENERATION_SETTINGS
+  },
+  voiceTranscription: {
+    ...DEFAULT_VOICE_TRANSCRIPTION_SETTINGS
   },
   toolPromptPreferences: {
     ...DEFAULT_RUNTIME_TOOLBOX_STATE.toolPromptPreferences
@@ -242,6 +266,10 @@ export const useRuntimeStore = create<RuntimeState>((set, get) => ({
     set((state) => ({
       memoryVectorRetrieval: mergeMemoryVectorRetrievalSettings(state.memoryVectorRetrieval, patch)
     })),
+  setObBrain: (patch) =>
+    set((state) => ({
+      obBrain: mergeObBrainSettings(state.obBrain, patch)
+    })),
   setImageGeneration: (patch) =>
     set((state) => ({
       imageGeneration: mergeImageGenerationSettings(state.imageGeneration, patch)
@@ -253,6 +281,10 @@ export const useRuntimeStore = create<RuntimeState>((set, get) => ({
   setVoiceGeneration: (patch) =>
     set((state) => ({
       voiceGeneration: mergeVoiceGenerationSettings(state.voiceGeneration, patch)
+    })),
+  setVoiceTranscription: (patch) =>
+    set((state) => ({
+      voiceTranscription: mergeVoiceTranscriptionSettings(state.voiceTranscription, patch)
     })),
   setToolPromptGroupEnabled: (group, enabled) =>
     set((state) => ({
@@ -362,10 +394,10 @@ export const useRuntimeStore = create<RuntimeState>((set, get) => ({
     }));
     return event;
   },
-  markTriggerFired: (ruleId, runAt) =>
+  markTriggerFired: (ruleId, runAt, lastActivityAt) =>
     set((state) => ({
       triggerRules: state.triggerRules.map((rule) =>
-        rule.id === ruleId ? markRuntimeTriggerFired(rule, runAt) : rule
+        rule.id === ruleId ? markRuntimeTriggerFired(rule, runAt, lastActivityAt) : rule
       )
     })),
   markTriggerFailed: (ruleId, error, runAt) =>
@@ -545,9 +577,11 @@ export const useRuntimeStore = create<RuntimeState>((set, get) => ({
         search: payload.search,
         conversationSummaryModel: payload.conversationSummaryModel,
         memoryVectorRetrieval: payload.memoryVectorRetrieval,
+        obBrain: payload.obBrain ?? DEFAULT_OB_BRAIN_SETTINGS,
         imageGeneration: payload.imageGeneration,
         imageUnderstanding: payload.imageUnderstanding,
         voiceGeneration: payload.voiceGeneration,
+        voiceTranscription: payload.voiceTranscription ?? DEFAULT_VOICE_TRANSCRIPTION_SETTINGS,
         toolPromptPreferences: payload.toolPromptPreferences,
         taskModeEnabled: payload.taskModeEnabled,
         mcpServers: payload.mcpServers,
@@ -572,9 +606,11 @@ export const useRuntimeStore = create<RuntimeState>((set, get) => ({
       search,
       conversationSummaryModel,
       memoryVectorRetrieval,
+      obBrain,
       imageGeneration,
       imageUnderstanding,
       voiceGeneration,
+      voiceTranscription,
       toolPromptPreferences,
       taskModeEnabled,
       mcpServers,
@@ -590,9 +626,11 @@ export const useRuntimeStore = create<RuntimeState>((set, get) => ({
       search,
       conversationSummaryModel,
       memoryVectorRetrieval,
+      obBrain,
       imageGeneration,
       imageUnderstanding,
       voiceGeneration,
+      voiceTranscription,
       toolPromptPreferences,
       taskModeEnabled,
       mcpServers,

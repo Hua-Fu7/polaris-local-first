@@ -1011,3 +1011,69 @@
     flex: 1 1 88px;
   }
 }
+
+/* ── Ombre-Brain 接入 ── */
+.ob-secret-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ob-secret-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ob-secret-save {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--type-small);
+  cursor: pointer;
+}
+
+.ob-secret-save:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.settings-form-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+  line-height: 1.5;
+}
+
+.ob-test-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.ob-test-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--border-hover);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--type-small);
+  cursor: pointer;
+}
+
+.ob-test-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ob-test-result {
+  color: var(--text-soft);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}

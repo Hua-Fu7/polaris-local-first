@@ -3,6 +3,7 @@ import { stripCodeBlocksFromMessage } from '../../engines/codeCardText';
 import type { ChatMessage, ModelTier, ThemeToolMode } from '../../types/domain';
 import type { WritableConversationBody } from '../../stores/chatStore';
 import { createMessage } from '../../engines/chatMessageFactory';
+import { stripChatSpecialTokens } from './chatSpecialTokens';
 import {
   buildToolOnlyFallback,
   mergeNativeToolCallDraftCodeIntoVisibleContent,
@@ -117,7 +118,7 @@ export function parseAssistantReplyContent(
     phase === 'final'
     && hasToolDraft
     && !normalizedBaseNarration;
-  const visibleContent =
+  const visibleContent = stripChatSpecialTokens(
     normalizedProjectedVisible ||
     (
       phase === 'streaming'
@@ -125,7 +126,8 @@ export function parseAssistantReplyContent(
         : hasToolDraft
           ? buildToolOnlyFallback(effectiveParsed.actions)
           : normalizedStreamingFallback
-    );
+    )
+  );
 
   return {
     parsed: effectiveParsed,

@@ -45,6 +45,8 @@ function buildState() {
     deleteCollaboratorThemeSession: () => {},
     commitSkinSnapshot: () => {},
     restoreSkinSnapshot: () => {},
+    deleteSkinSnapshot: () => {},
+    clearSkinHistory: () => {},
     rollbackLastSkin: () => {}
   };
 }
@@ -152,3 +154,4 @@ describe('spaceStoreThemeMutations', () => {
     expect(result.theme.customCSS).toContain('hotpink');
   });
 });
+

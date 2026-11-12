@@ -48,7 +48,26 @@ export type PolarisTriggerSchedule =
   | {
       kind: 'interval';
       everyMinutes: number;
+    }
+  | {
+      /**
+       * 空闲触发：用户连续 idleMinutes 没有活跃过，规则才算到期。
+       * 到期时刻 = 最后活跃时间 + idleMinutes，由排期引擎在运行时反复重算，
+       * 所以用户只要还在说话，计时就会一直往后推。
+       */
+      kind: 'idle';
+      idleMinutes: number;
     };
+export type PolarisTriggerRuleMode = 'manual' | 'proactive-settings' | 'proactive-plan';
+
+export type PolarisProactiveContactSettings = {
+  enabled: boolean;
+  maxPerDay: number;
+  quietHours: boolean;
+  sentToday: number;
+  day: string;
+};
+
 export type PolarisTriggerTarget = {
   collaboratorId: string;
   conversationMode: 'follow-latest' | 'fixed';
@@ -59,6 +78,9 @@ export type PolarisTriggerAction = {
 };
 export interface PolarisTriggerRule {
   id: string;
+  mode?: PolarisTriggerRuleMode;
+  proactiveSettings?: PolarisProactiveContactSettings;
+  sourceMessageId?: string;
   name: string;
   enabled: boolean;
   source: PolarisTriggerSource;

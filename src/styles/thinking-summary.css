@@ -20,7 +20,7 @@
   position: relative;
   width: 100%;
   max-height: 84%;
-  padding: 10px 18px calc(22px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 18px calc(54px + env(safe-area-inset-bottom, 0px));
   border-radius: 28px 28px 0 0;
   background:
     radial-gradient(circle at top center, color-mix(in srgb, var(--accent-glow) 58%, transparent), transparent 38%),
@@ -28,6 +28,7 @@
   border: 1px solid color-mix(in srgb, var(--border-hover) 44%, transparent);
   box-shadow: 0 -18px 42px rgba(7, 10, 20, 0.24);
   overflow: hidden auto;
+  scroll-padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
 }
 
 .thinking-summary-sheet .sheet-handle {
@@ -350,4 +351,26 @@
     border-radius: 18px;
     padding: 11px 12px 12px;
   }
+}
+
+/* Plain summary mode: no rail, no card shell, full-width thinking text. */
+.thinking-summary-list.thinking-summary-list--plain {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.thinking-summary-list--plain > .thinking-summary-step--plain {
+  display: block;
+  width: 100%;
+  margin-top: 0;
+}
+
+.thinking-summary-list--plain .thinking-summary-phase-list,
+.thinking-summary-list--plain .thinking-summary-phase-copy {
+  width: 100%;
+  min-width: 0;
+}
+
+.thinking-summary-list--plain .thinking-summary-phase-item {
+  grid-template-columns: 10px minmax(0, 1fr);
 }

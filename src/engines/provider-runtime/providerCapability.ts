@@ -123,6 +123,13 @@ export type ProviderCapability = {
     history: CanonicalProviderToolHistoryMode;
     promptProtocol: 'native-first' | 'hybrid';
     choiceControl: 'none' | 'auto' | 'required';
+    /**
+     * 是否真的支持 `tool_choice: required`（与 choiceControl 并存）。
+     * choiceControl === 'auto' 无法区分「支持 required 但保守降级」和「明确不支持 required」
+     * （如 DeepSeek 思考模型在思考模式下 required 会 400）。判断层的 forceToolChoice
+     * 只有在这个字段为 true 时才敢穿透白名单硬发 required。
+     */
+    supportsRequiredChoice: boolean;
     nativeSchema: ProviderCapabilityNativeToolSchema;
     geminiThoughtSignatureTransport: ProviderCapabilityGeminiThoughtSignatureTransport;
     openAiHistoryReplay: ProviderCapabilityOpenAiToolHistoryReplay;
@@ -499,6 +506,7 @@ export function resolveProviderCapability(
       history: protocolShape.toolHistory,
       promptProtocol: 'native-first',
       choiceControl: toolChoiceControl,
+      supportsRequiredChoice: profile.supportsRequiredToolChoice,
       nativeSchema: isGeminiModel(runtimeProvider.model) ? 'gemini-function-declarations' : 'openai',
       geminiThoughtSignatureTransport: resolveGeminiThoughtSignatureTransport(profile),
       openAiHistoryReplay: profile.openAiToolHistoryReplayPolicy

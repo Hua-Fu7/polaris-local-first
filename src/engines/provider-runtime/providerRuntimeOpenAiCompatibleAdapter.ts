@@ -30,6 +30,8 @@ import {
 } from './providerCapability';
 import type { OrderedContextMessage } from './requestShared/types';
 import {
+  isDeepSeekHost,
+  isDeepSeekThinkingModel,
   isMoonshotHost,
   parseProviderHost
 } from './internal/providerMatching';
@@ -448,8 +450,41 @@ function coerceTranscriptMessagesToAlternatingRoles(messages: OpenAiCompatibleTr
   }, []);
 }
 
+/** 临时诊断：给请求里每一段算指纹，两次请求一比就知道前缀从哪段开始变。 */
+function fingerprint(value: unknown): string {
+  const text = typeof value === 'string' ? value : JSON.stringify(value ?? '');
+  let hash = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
+  }
+  return `${hash.toString(36)}:${text.length}`;
+}
+
+function logCacheFingerprint(body: Record<string, unknown>) {
+  try {
+    const messages = Array.isArray(body.messages) ? body.messages as unknown[] : [];
+    const parts = [
+      `sys=${fingerprint(body.messages && (body as { system?: unknown }).system)}`,
+      `tools=${fingerprint(body.tools)}`,
+      `n=${messages.length}`,
+      ...messages.map((message, index) => `${index}=${fingerprint(message)}`)
+    ];
+    console.log('[cache-fp]', parts.join(' '));
+  } catch {
+    // 忽略
+  }
+}
+
 export function buildOpenAiCompatibleRequest(input: ProviderRuntimeRequestInput) {
-  const { api, context, sessionId, advanced, bodyOverrides, openAiToolHistoryMode = 'native' } = input;
+  const {
+    api,
+    context,
+    sessionId,
+    advanced,
+    bodyOverrides,
+    openAiToolHistoryMode = 'native',
+    forceToolChoice = false
+  } = input;
   const endpoint = buildApiEndpoint(api.baseUrl, api.path);
   const {
     apiKey,
@@ -478,6 +513,13 @@ export function buildOpenAiCompatibleRequest(input: ProviderRuntimeRequestInput)
     model,
     messages: orderedMessages
   };
+  // DeepSeek 思考模型（deepseek-flash / deepseek-v4 / deepseek-r1 等）默认
+  // reasoning_effort=high，思考链会吃掉几乎所有输出 token，导致正文 content 为空。
+  // 显式降为 low，让模型在思考后给正文留出空间——思考链仍在，只是更克制。
+  const deepSeekThinking = isDeepSeekHost(parseProviderHost(api.baseUrl)) && isDeepSeekThinkingModel(model);
+  if (deepSeekThinking) {
+    body.reasoning_effort = 'low';
+  }
   const openRouterSessionId = resolveOpenRouterSessionId(api.baseUrl, sessionId);
   if (openRouterSessionId) {
     body.session_id = openRouterSessionId;
@@ -516,11 +558,15 @@ export function buildOpenAiCompatibleRequest(input: ProviderRuntimeRequestInput)
     body.tools = providerCapability.tools.nativeSchema === 'gemini-function-declarations'
       ? sanitizeToolsForGeminiFunctionDeclarations(context.tools)
       : context.tools;
-    const toolChoice = resolveOpenAiToolChoice(context.toolChoice, providerCapability);
+    const toolChoice = resolveOpenAiToolChoice(context.toolChoice, providerCapability, {
+      forceRequired: forceToolChoice
+    });
     if (toolChoice) {
       body.tool_choice = toolChoice;
     }
   }
+
+  logCacheFingerprint(body);
 
   return buildRequestResult({
     endpoint,

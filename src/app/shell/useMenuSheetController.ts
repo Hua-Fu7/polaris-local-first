@@ -9,7 +9,6 @@ import { useRuntimeStore, selectRuntimeApi } from '../../stores/runtimeStore';
 import { useSpaceStore } from '../../stores/spaceStore';
 import { useI18n } from '../../i18n';
 import { EMPTY_MENU_TOKEN_USAGE_SUMMARY, summarizeMenuTokenUsage } from './menuTokenUsage';
-import { useMenuAndroidUpdateController } from './useMenuAndroidUpdateController';
 import { useMenuAutomationController } from './useMenuAutomationController';
 import { useMenuBackupTransferController } from './useMenuBackupTransferController';
 import { useMenuFontLibraryController } from './useMenuFontLibraryController';
@@ -69,6 +68,7 @@ export function useMenuSheetController({
   const memoryVectorRetrieval = useRuntimeStore((state) => state.memoryVectorRetrieval);
   const imageGeneration = useRuntimeStore((state) => state.imageGeneration);
   const voiceGeneration = useRuntimeStore((state) => state.voiceGeneration);
+  const voiceTranscription = useRuntimeStore((state) => state.voiceTranscription);
   const toolPromptPreferences = useRuntimeStore((state) => state.toolPromptPreferences);
   const taskModeEnabled = useRuntimeStore((state) => state.taskModeEnabled);
   const mcpServers = useRuntimeStore((state) => state.mcpServers);
@@ -87,6 +87,7 @@ export function useMenuSheetController({
   const setMemoryVectorRetrieval = useRuntimeStore((state) => state.setMemoryVectorRetrieval);
   const setImageGeneration = useRuntimeStore((state) => state.setImageGeneration);
   const setVoiceGeneration = useRuntimeStore((state) => state.setVoiceGeneration);
+  const setVoiceTranscription = useRuntimeStore((state) => state.setVoiceTranscription);
   const setToolPromptGroupEnabled = useRuntimeStore((state) => state.setToolPromptGroupEnabled);
   const setTaskModeEnabled = useRuntimeStore((state) => state.setTaskModeEnabled);
   const setMcpServers = useRuntimeStore((state) => state.setMcpServers);
@@ -195,7 +196,6 @@ export function useMenuSheetController({
     || backupTransfer.importingData
     || backupTransfer.exportingWebDav
     || backupTransfer.importingWebDav;
-  const androidUpdate = useMenuAndroidUpdateController({ ui });
   const tokenUsageSummary = useMemo(() => {
     if (!shouldBuildMenuTokenUsageSummary(open, page)) return EMPTY_MENU_TOKEN_USAGE_SUMMARY;
     return summarizeMenuTokenUsage(
@@ -227,10 +227,12 @@ export function useMenuSheetController({
     memoryVectorRetrieval,
     imageGeneration,
     voiceGeneration,
+    voiceTranscription,
     setConversationSummaryModel,
     setMemoryVectorRetrieval,
     setImageGeneration,
-    setVoiceGeneration
+    setVoiceGeneration,
+    setVoiceTranscription
   });
 
   const {
@@ -259,9 +261,11 @@ export function useMenuSheetController({
     personalDataStatus: toolbox.personalDataStatus,
     imageGeneration: generationSettings.imageGeneration,
     voiceGeneration: generationSettings.voiceGeneration,
+    voiceTranscription: generationSettings.voiceTranscription,
     toolPromptPreferences,
     taskModeEnabled,
     customization,
+    onSetVoiceCallOrbColor: (color: string | null) => setCustomization({ voiceCallOrbColor: color }),
     displayPreferences,
     customFontCount: fontLibrary.customFontCount,
     tokenUsageSummary,
@@ -291,7 +295,6 @@ export function useMenuSheetController({
     onRefreshPersonalDataStatus: toolbox.onRefreshPersonalDataStatus,
     onRequestPersonalCalendarAccess: toolbox.onRequestPersonalCalendarAccess,
     enabledTriggerRulesCount: automation.enabledTriggerRulesCount,
-    androidApkUpdateAvailable: androidUpdate.androidApkUpdateAvailable,
     localBackupAvailable: backupTransfer.localBackupAvailable,
     localExportDetail: backupTransfer.localExportDetail,
     localImportDetail: backupTransfer.localImportDetail,
@@ -308,6 +311,7 @@ export function useMenuSheetController({
     onSetMemoryVectorRetrieval: generationSettings.onSetMemoryVectorRetrieval,
     onSetImageGeneration: generationSettings.onSetImageGeneration,
     onSetVoiceGeneration: generationSettings.onSetVoiceGeneration,
+    onSetVoiceTranscription: generationSettings.onSetVoiceTranscription,
     onSetToolPromptGroupEnabled: toolbox.onSetToolPromptGroupEnabled,
     onSetThemeToolMode: setThemeToolMode,
     onSetTaskModeEnabled: toolbox.onSetTaskModeEnabled,
@@ -324,14 +328,12 @@ export function useMenuSheetController({
     onSetCustomFontScope: fontLibrary.onSetCustomFontScope,
     onSetAppearance: (appearance: typeof displayPreferences.appearance) => setDisplayPreferences({ appearance }),
     onSetDisplayFontScale: (fontScale: number) => setDisplayPreferences({ fontScale }),
-    onSetHapticsEnabled: (enabled: boolean) => setDisplayPreferences({ hapticsEnabled: enabled }),
     onDeleteCustomFont: fontLibrary.onDeleteCustomFont,
     onRefreshStorageHealth: () => refreshStorageHealth({ includeRuntimeLog: true }),
     onClearDiagnostics: clearDiagnostics,
     onClearOrphanAssets: clearOrphanAssets,
     onClearConversationAttachmentCopies: clearConversationAttachmentCopies,
     onClearRedundantAssetPreviews: clearRedundantAssetPreviews,
-    onCheckAndroidApkUpdate: androidUpdate.onCheckAndroidApkUpdate,
     onSetApiConfig: gateway.onSetApiConfig,
     onApplyGatewayPreset: gateway.onApplyGatewayPreset,
     onImportBrowserFileSelected: backupTransfer.onImportBrowserFileSelected,
@@ -343,3 +345,7 @@ export function useMenuSheetController({
     onImportFromWebDav: backupTransfer.onImportFromWebDav
   };
 }
+
+
+
+

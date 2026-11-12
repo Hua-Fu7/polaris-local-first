@@ -39,6 +39,37 @@ describe('parseInlineThinkingTags', () => {
       thinkingTexts: []
     });
   });
+
+  it('keeps an unfinished thinking block out of the visible body while streaming', () => {
+    expect(parseInlineThinkingTags('<think>先看约束，再决定。', { streaming: true })).toEqual({
+      visibleContent: '',
+      thinkingTexts: ['先看约束，再决定。']
+    });
+
+    expect(parseInlineThinkingTags('正文先说了\n<think>接着想', { streaming: true })).toEqual({
+      visibleContent: '正文先说了',
+      thinkingTexts: ['接着想']
+    });
+  });
+
+  it('keeps the visible body while a half-typed thinking tag is still arriving', () => {
+    expect(parseInlineThinkingTags('正文<thin', { streaming: true })).toEqual({
+      visibleContent: '正文',
+      thinkingTexts: []
+    });
+
+    expect(parseInlineThinkingTags('正文</think', { streaming: true })).toEqual({
+      visibleContent: '正文',
+      thinkingTexts: []
+    });
+  });
+
+  it('hands the body back to the visible side once the streaming block closes', () => {
+    expect(parseInlineThinkingTags('<think>想完了。</think>\n\n正式回答。', { streaming: true })).toEqual({
+      visibleContent: '正式回答。',
+      thinkingTexts: ['想完了。']
+    });
+  });
 });
 
 describe('promoteInlineThinkingTags', () => {

@@ -58,6 +58,8 @@ export type AssistantContextMessage = {
   role: AssistantContextRole;
   content: AssistantMessageContent;
   cachePrefixEligible?: boolean;
+  /** 送达保证：即使 provider 省略易变 system 层也必须送出（见 ChatMessage.requestDelivery）。 */
+  requestDelivery?: 'always';
   thinkingText?: string;
   toolCalls?: AssistantContextToolCall[];
   toolResult?: AssistantContextToolResult;
@@ -102,6 +104,13 @@ export type AssembleAssistantContextParams = {
   messagesPrepared?: boolean;
   toolLedger?: ToolLedgerEntry[];
   memoryLines?: string[];
+  /**
+   * 这一轮按需选中的记忆：不放进系统提示，而是塞到「最后一条用户消息之前」。
+   * 它们每轮都可能变，放在前缀里会把后面整段对话的缓存全部作废。
+   */
+  onDemandMemoryLines?: string[];
+  /** OB 召回命中的行：放进「本轮上下文」，位置在最新一条用户消息之前。 */
+  obRecallLines?: string[];
   conversationSummaries?: AssistantConversationSummaryDecision[];
   semanticRecallCandidates?: AssistantSemanticRecallContextCandidate[];
   memoryReferenceDocs?: PersonaMemoryReferenceDoc[];
@@ -131,11 +140,45 @@ function buildLatestUserContextMessage(part: Pick<AssistantPromptPart, 'name' | 
   return {
     role: 'user',
     content: [
-      '[本轮请求上下文，不是用户原话]',
+      '[以下是系统自动附带的背景，不是用户说的话。用户真正说的话在这段之后，照常回应它]',
       part.content
     ].join('\n'),
     promptPartName: part.name,
     promptPartLayer: part.layer
+  };
+}
+
+/**
+ * OB 召回块。
+ *
+ * 单独成一段、放在动态上下文最前面，而不是并进记忆段：记忆段在缓存前缀里，
+ * 每轮变一次就把后面的对话历史全部作废；这一段属于「本轮才有」，理应挨着用户这句话。
+ */
+function buildObRecallContextMessage(lines: string[]): AssistantContextMessage {
+  return {
+    role: 'user',
+    content: [
+      '[以下是系统自动附带的旧事，不是用户说的话。不要复述、不要评论它]',
+      '以下旧事只在明确相关时参考；不要主动提起，不要往这个话题上引，不相关就忽略。',
+      ...lines
+    ].join('\n')
+  };
+}
+
+/**
+ * 按需记忆块：跟常驻记忆分开走。
+ *
+ * 常驻那几条变化少，留在系统提示里当稳定前缀；这一块每轮都可能不同，
+ * 放进前缀会把后面整段对话的缓存全部作废，所以挪到用户消息前面。
+ */
+function buildOnDemandMemoryContextMessage(lines: string[]): AssistantContextMessage {
+  return {
+    role: 'user',
+    content: [
+      '[以下是系统自动附带的记忆线索，不是用户说的话。不要复述、不要评论它]',
+      '只在明确相关时参考；不要主动提起，不相关就忽略。',
+      ...lines
+    ].join('\n')
   };
 }
 
@@ -231,6 +274,8 @@ export function assembleAssistantContext(params: AssembleAssistantContextParams)
     messagesPrepared = false,
     toolLedger,
     memoryLines,
+    onDemandMemoryLines,
+    obRecallLines,
     conversationSummaries,
     semanticRecallCandidates,
     memoryReferenceDocs,
@@ -294,13 +339,22 @@ export function assembleAssistantContext(params: AssembleAssistantContextParams)
         };
       });
   const dynamicPromptParts = systemPromptParts?.filter((part) => part.layer === 'context') ?? [];
-  const latestUserContextParts = latestUserMessageId
-    ? dynamicPromptParts.filter((part) => part.name === 'runtime_clock_context')
-    : [];
-  const latestUserContextMessages = latestUserContextParts.map(buildLatestUserContextMessage);
-  const dynamicSystemSegments = dynamicPromptParts
-    .filter((part) => part.name !== 'runtime_clock_context' || !latestUserMessageId)
-    .map(buildPromptPartSystemSegment);
+  // 所有「本轮才会变」的上下文（时间、工具/界面现场、工作区现场、正则触发…）都追加到最后一条用户消息里。
+  //
+  // 原因：这些内容每轮都可能不一样，而它们原本排在稳定前缀（身份/能力）和对话之间。
+  // 前缀缓存只要中间变一点，从那里往后全部作废——包括整段对话历史，命中率直接腰斩。
+  // 时间上下文原本就是这么处理的，这里把同一规则推广到全部 context 层。
+  const latestUserContextParts = latestUserMessageId ? dynamicPromptParts : [];
+  const latestUserContextMessages = [
+    ...(latestUserMessageId && obRecallLines?.length ? [buildObRecallContextMessage(obRecallLines)] : []),
+    ...(latestUserMessageId && onDemandMemoryLines?.length
+      ? [buildOnDemandMemoryContextMessage(onDemandMemoryLines)]
+      : []),
+    ...latestUserContextParts.map(buildLatestUserContextMessage)
+  ];
+  const dynamicSystemSegments = latestUserMessageId
+    ? []
+    : dynamicPromptParts.map(buildPromptPartSystemSegment);
 
   return {
     memorySlots: {
@@ -359,6 +413,7 @@ export function assembleAssistantContext(params: AssembleAssistantContextParams)
               allowImages,
               supplementalContent: message.id === latestUserMessageId ? latestUserSupplementalContent : undefined
             }),
+            requestDelivery: message.role === 'system' ? message.requestDelivery : undefined,
             thinkingText: message.role === 'assistant' && message.thinkingText?.trim()
               ? message.thinkingText
               : undefined,

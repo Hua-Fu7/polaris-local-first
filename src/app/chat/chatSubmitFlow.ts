@@ -8,6 +8,7 @@ import {
   recordChatSendPerformanceMark
 } from './chatSendPerformanceTrace';
 import { resolveChatReplyPersistenceStatus } from './chatReplyPersistence';
+import { deliverReplyCompletionFeedback } from './replyCompletionFeedback';
 
 type SubmitMessageState = {
   inputDraft: string;
@@ -187,6 +188,8 @@ export async function submitMessage(state: SubmitMessageState, handlers: SubmitM
       collaboratorId: conversationSession.collaboratorId,
       messages: nextMessages
     });
+    // 回完了：轻震一下；人不在这个对话里的话再补一条通知
+    void deliverReplyCompletionFeedback(writableSession.conversationId);
   } catch (error) {
     const persistenceStatus = resolveChatReplyPersistenceStatus(error);
     if (!persistenceStatus) throw error;

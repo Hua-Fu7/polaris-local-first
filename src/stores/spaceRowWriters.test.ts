@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+﻿import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   buildSpaceLocalDataUnitOfWork,
   buildSpaceObjectSeeds,
@@ -324,7 +324,7 @@ describe('space row writer', () => {
     expect((await readObjectValue('skin', 'skin-1')).value).toEqual(expect.objectContaining({ id: 'skin-1' }));
     const themeValue = await readObjectValue('theme', 'space-theme');
     expect(themeValue.value.savedSkinOrder).toEqual(['skin-1']);
-    // The library is stripped from the stored ThemeState — it lives in the skin row.
+    // The library is stripped from the stored ThemeState 鈥?it lives in the skin row.
     expect(themeValue.value.value.savedSkins).toEqual([]);
     expect((await readDomainMeta()).objectCounts.skin).toBe(1);
   });

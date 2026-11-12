@@ -94,38 +94,10 @@
   pointer-events: none;
   background: var(--shell-bg, var(--cool-bg, var(--bg, #ffffff)));
 }
-.startup-theme-veil::before,
-.startup-theme-veil::after,
-.world-frame-loading::before,
-.world-frame-loading::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  pointer-events: none;
-}
-.startup-theme-veil::before,
-.world-frame-loading::before {
-  width: 48px;
-  height: 48px;
-  margin: -24px 0 0 -24px;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle, color-mix(in srgb, var(--app-star-color) var(--app-star-loading-aura-mix), transparent), color-mix(in srgb, var(--app-star-color-mid) var(--app-star-loading-aura-mid-mix), transparent) 44%, color-mix(in srgb, var(--app-star-color-warm) 0%, transparent) 72%);
-  opacity: var(--app-star-loading-aura-opacity);
-  animation: startupStarBreath 1.8s ease-in-out infinite;
-}
-.startup-theme-veil::after,
-.world-frame-loading::after {
-  width: 36px;
-  height: 36px;
-  margin: -18px 0 0 -18px;
-  background: linear-gradient(135deg, var(--app-star-color) 0%, var(--app-star-color-soft) 32%, var(--app-star-color-mid) 55%, var(--app-star-color-warm) 74%, var(--app-star-color-end) 100%);
-  clip-path: polygon(50% 16.67%, 57.5% 42.5%, 83.33% 50%, 57.5% 57.5%, 50% 83.33%, 42.5% 57.5%, 16.67% 50%, 42.5% 42.5%);
-  filter: drop-shadow(0 0 var(--app-star-shadow-blur) var(--app-star-shadow));
-  opacity: var(--app-star-opacity);
-  transform: scale(var(--app-star-scale));
-  animation: startupStarTurn 1.8s cubic-bezier(0.62, 0, 0.16, 1) infinite;
+.startup-theme-veil,
+.world-frame-loading {
+  display: grid;
+  place-items: center;
 }
 html[data-native-keyboard-overlay='true'][data-keyboard-open='true'] .app-shell::after {
   height: var(--keyboard-offset, 0px);
@@ -159,6 +131,7 @@ html[data-native-keyboard-overlay='true'][data-keyboard-open='true'] .app-shell:
   color: var(--text);
 }
 .app-stage {
+  touch-action: pan-y;
   position: relative;
   min-height: 0;
   height: 100%;
@@ -217,6 +190,19 @@ html[data-native-keyboard-overlay='true'][data-keyboard-open='true'] .app-shell:
 .app-shell.world-chroma-chat .bg-glow-top { background: radial-gradient(circle, var(--cool-accent-soft) 0%, transparent 70%); }
 .app-shell.world-chroma-collection .bg-glow-bottom { background: radial-gradient(circle, var(--warm-accent-glow) 0%, transparent 70%); }
 .app-shell.world-chroma-chat .bg-glow-bottom { background: radial-gradient(circle, var(--cool-accent-glow) 0%, transparent 70%); }
+/*
+ * 暗色下不画这两团光晕。
+ *
+ * 它们的颜色来自点缀色（--warm/cool-accent-*），本来是暖金或浅蓝的柔光。
+ * 暗色主题的点缀色改成中性浅灰后，同一份 alpha 在深灰底上不再是「有颜色的柔光」，
+ * 而是两坨灰白污渍：左下 0.22（明显）、右上 0.16（略淡）。
+ * 用户要的是纯深灰，所以直接不画。
+ * 浅色主题保持原样 —— 那边的点缀色是深色，柔光的作用是正常的。
+ */
+html[data-polaris-appearance='dark'] .app-shell .bg-glow-top,
+html[data-polaris-appearance='dark'] .app-shell .bg-glow-bottom {
+  background: none;
+}
 body[data-polaris-background-override='true'] .app-shell .bg-glow,
 body[data-polaris-custom-background-override='true'] .app-shell .bg-glow {
   opacity: 0;
@@ -677,225 +663,14 @@ body[data-polaris-preset='polaris-night'] .collection .pulse-dot {
   color: #ffffff;
 }
 
-.world-switch-veil-host {
-  --world-switch-veil-anchor-y: 50%;
-  position: fixed;
-  left: 50%;
-  top: 0;
-  width: min(100vw, 430px);
-  height: var(--app-shell-height, var(--app-height, 100%));
-  transform: translateX(-50%);
-  z-index: 220;
-  pointer-events: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-.world-switch-veil {
-  position: absolute;
-  right: 0;
-  top: var(--world-switch-veil-anchor-y);
-  transform: translateY(-50%);
-  width: 44px;
-  height: 112px;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  z-index: 12;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-  touch-action: none;
-  pointer-events: auto;
-  -webkit-user-select: none;
-  user-select: none;
-}
-.world-switch-veil.revive-open {
-  transform: translateY(-50%) translateX(-4px);
-}
-.world-switch-veil-halo,
-.world-switch-veil-core,
-.world-switch-veil-sheen,
-.world-switch-veil-icon { position: absolute; transition: opacity var(--duration-normal) ease, transform var(--duration-normal) ease, box-shadow var(--duration-normal) ease, border-color var(--duration-normal) ease; }
-.world-switch-veil-halo {
-  inset: 26px -4px 26px 10px;
-  opacity: 0.18;
-  filter: blur(10px);
-  border-radius: 18px 0 0 18px;
-}
-.world-switch-veil-core {
-  inset: 22px 0 22px 24px;
-  border: 1px solid;
-  border-right: 0;
-  opacity: 0.7;
-  border-radius: 16px 0 0 16px;
-  backdrop-filter: blur(14px) saturate(1.06);
-}
-.world-switch-veil-sheen {
-  inset: 25px 0 25px 30px;
-  background: linear-gradient(180deg, rgba(255,255,255,.3), rgba(255,255,255,0.04) 34%, rgba(255,255,255,0) 78%);
-  opacity: 0.72;
-  border-radius: 14px 0 0 14px;
-}
-.world-switch-veil-icon {
-  inset: 22px 0 22px 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255,255,255,.88);
-  opacity: 0.8;
-}
-.world-switch-veil-mark { width: 15px; height: 15px; }
-.world-switch-veil-host.chat .world-switch-veil-halo {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 38%, transparent), color-mix(in srgb, var(--accent-soft) 20%, transparent));
-}
-.world-switch-veil-host.chat .world-switch-veil-core {
-  border-color: rgba(55, 44, 30, 0.18);
-  background: linear-gradient(180deg, rgba(255,255,255,.14), color-mix(in srgb, var(--accent-soft) 28%, rgba(255,255,255,.06)));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.32), 0 4px 14px rgba(32, 24, 15, 0.08);
-}
-.world-switch-veil-host.collection .world-switch-veil-halo {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 34%, transparent), color-mix(in srgb, var(--accent-soft) 16%, transparent));
-}
-.world-switch-veil-host.collection .world-switch-veil-core {
-  border-color: rgba(27, 38, 58, 0.2);
-  background: linear-gradient(180deg, rgba(255,255,255,.15), color-mix(in srgb, var(--accent-soft) 30%, rgba(255,255,255,.06)));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.34), 0 5px 16px rgba(19, 29, 45, 0.1);
-}
-.world-switch-veil:hover .world-switch-veil-halo,
-.world-switch-veil:focus-visible .world-switch-veil-halo,
-.world-switch-veil:active .world-switch-veil-halo,
-.world-switch-veil.revealed .world-switch-veil-halo {
-  opacity: 0.26;
-  transform: translateX(-2px);
-}
-.world-switch-veil:hover .world-switch-veil-core,
-.world-switch-veil:focus-visible .world-switch-veil-core,
-.world-switch-veil:active .world-switch-veil-core,
-.world-switch-veil.revealed .world-switch-veil-core {
-  opacity: 0.92;
-  transform: translateX(-3px);
-}
-.world-switch-veil:hover .world-switch-veil-sheen,
-.world-switch-veil:focus-visible .world-switch-veil-sheen,
-.world-switch-veil:active .world-switch-veil-sheen,
-.world-switch-veil.revealed .world-switch-veil-sheen {
-  opacity: 0.88;
-  transform: translateX(-2px);
-}
-.world-switch-veil:hover .world-switch-veil-icon,
-.world-switch-veil:focus-visible .world-switch-veil-icon,
-.world-switch-veil:active .world-switch-veil-icon,
-.world-switch-veil.revealed .world-switch-veil-icon {
-  opacity: 1;
-  transform: translateX(-2px) scale(1.04);
-}
-.world-switch-veil.collapsed .world-switch-veil-halo {
-  opacity: 0.08;
-  transform: translateX(3px);
-}
-.world-switch-veil.collapsed .world-switch-veil-core {
-  opacity: 0.56;
-  transform: translateX(4px);
-}
-.world-switch-veil.collapsed .world-switch-veil-sheen {
-  opacity: 0.32;
-  transform: translateX(5px);
-}
-.world-switch-veil.collapsed .world-switch-veil-icon {
-  opacity: 0;
-  transform: translateX(4px);
-}
-.world-switch-veil:focus-visible { outline: none; }
-
-.world-switch-revive-popover {
-  position: absolute;
-  right: 48px;
-  top: var(--world-switch-veil-anchor-y);
-  transform: translateY(-50%);
-  width: min(208px, calc(100vw - 92px));
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 20px;
-  border: 1px solid rgba(60, 53, 46, 0.12);
-  background: linear-gradient(180deg, rgba(251, 249, 246, 0.97), rgba(243, 238, 232, 0.95));
-  box-shadow:
-    0 16px 34px rgba(31, 24, 20, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(16px);
-  pointer-events: auto;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-.world-switch-revive-popover strong {
-  color: rgba(38, 31, 25, 0.94);
-  font-size: 13px;
-  line-height: 1.3;
-}
-
-.world-switch-revive-popover p {
-  margin: 0;
-  color: rgba(74, 63, 53, 0.74);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.world-switch-revive-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.world-switch-revive-actions button,
-.world-switch-revive-cancel {
-  min-height: 34px;
-  border-radius: 999px;
-  border: 1px solid rgba(98, 82, 67, 0.14);
-  background: rgba(255, 255, 255, 0.72);
-  color: rgba(48, 38, 30, 0.9);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-  transition: transform 140ms ease, background 140ms ease, opacity 140ms ease;
-}
-
-.world-switch-revive-actions button:hover,
-.world-switch-revive-actions button:focus-visible,
-.world-switch-revive-cancel:hover,
-.world-switch-revive-cancel:focus-visible {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.world-switch-revive-actions button.primary {
-  background: rgba(53, 46, 40, 0.92);
-  border-color: rgba(53, 46, 40, 0.92);
-  color: rgba(255, 249, 242, 0.96);
-}
-
-.world-switch-revive-actions button:disabled {
-  opacity: 0.42;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.world-switch-revive-cancel {
-  background: transparent;
-}
-
 @media (max-width: 640px) {
   .topbar { padding-left: 16px; padding-right: 16px; }
 }
 
 @media (max-width: 430px) {
-  .world-switch-veil-host.chat {
-    --world-switch-veil-anchor-y: calc(50% - 68px);
-  }
-
   .app-shell.world-switching .world-stack::before {
     opacity: 0.18;
     transform: scale(1.01);
   }
 }
+

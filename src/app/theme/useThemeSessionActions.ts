@@ -85,6 +85,8 @@ export function useThemeSessionActions() {
       coordinator.runExternalThemeMutation(() => {
         themeSession.restoreSkinSnapshot(snapshotId);
       }),
+    deleteSkinSnapshot: (snapshotId: string) => themeSession.deleteSkinSnapshot(snapshotId),
+    clearSkinHistory: () => themeSession.clearSkinHistory(),
     rollbackLastSkin: () =>
       coordinator.runExternalThemeMutation(() => {
         themeSession.rollbackLastSkin();
@@ -92,3 +94,4 @@ export function useThemeSessionActions() {
     rollbackPreviewForConversationDeletion: coordinator.rollbackPreviewForConversationDeletion
   }), [coordinator, themeSession]);
 }
+

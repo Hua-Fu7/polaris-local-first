@@ -15,6 +15,7 @@ const baseCustomization: AppCustomization = {
   starGlow: 0.46,
   starScale: 1,
   starWarmth: 0.54,
+  voiceCallOrbColor: null,
   backgroundAssetId: null,
   customFontAssetIds: ['font-a'],
   customFontScopeAssignments: {

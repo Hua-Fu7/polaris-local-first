@@ -11,7 +11,6 @@ type MenuDisplayPageProps = {
   displayPreferences: AppDisplayPreferences;
   onBack: () => void;
   onSetAppearance: (appearance: AppAppearancePreference) => void;
-  onSetHapticsEnabled: (enabled: boolean) => void;
 };
 
 function getAppearanceOptions(t: I18nTranslator['t']): Array<{
@@ -41,8 +40,7 @@ function getAppearanceOptions(t: I18nTranslator['t']): Array<{
 export function MenuDisplayPage({
   displayPreferences,
   onBack,
-  onSetAppearance,
-  onSetHapticsEnabled
+  onSetAppearance
 }: MenuDisplayPageProps) {
   const { t } = useI18n();
   const appearanceOptions = useMemo(() => getAppearanceOptions(t), [t]);
@@ -81,19 +79,10 @@ export function MenuDisplayPage({
               ))}
             </div>
           </div>
-          <label className="menu-preference-row menu-preference-row--switch">
-            <span className="menu-preference-copy">
-              <strong>{t('settings.display.hapticsTitle')}</strong>
-              <small>{displayPreferences.hapticsEnabled ? t('settings.enabled') : t('settings.disabled')}</small>
-            </span>
-            <input
-              type="checkbox"
-              checked={displayPreferences.hapticsEnabled}
-              onChange={(event) => onSetHapticsEnabled(event.target.checked)}
-            />
-          </label>
         </div>
       </section>
     </div>
   );
 }
+
+

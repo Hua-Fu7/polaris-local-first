@@ -12,7 +12,30 @@
   justify-content: flex-start;
   animation: streamingStageBloom 240ms var(--ease-out) both;
 }
-.bubble-frame.assistant.streaming-prelude { justify-content: center; }
+/* 还没吐字、只有一个转圈标的时候，别用 stage 那套留白：那会在
+   “Thinking …” 和真正的回复之间撑出一大片空。等有字了再按 stage 留白。 */
+.bubble-frame.assistant.streaming-stage.streaming-prelude {
+  min-height: 0;
+}
+.bubble-frame.assistant.streaming-prelude { justify-content: flex-start; min-height: 0; }
+.bubble-frame.assistant.streaming-live.streaming-prelude { min-height: 0; }
+.bubble.assistant.streaming-prelude-bubble {
+  display: inline-flex;
+  width: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+/* 准备中只有一个转圈标，留白跟着内容走；以前这里硬写 88~148px，
+   于是“Thinking …”和真正的回复之间会空出小半屏。 */
+.bubble-frame.assistant.streaming-live.streaming-prelude {
+  min-height: 0;
+  justify-content: flex-start;
+}
 .bubble-frame.assistant.streaming-live::before,
 .bubble-frame.assistant.settling::before {
   content: '';
@@ -110,8 +133,46 @@
   transform: translateY(-1px);
 }
 .bubble-frame.assistant.streaming-stage .message-rich-text { animation: streamingCopyIn 140ms ease both; }
-.bubble-frame.assistant.streaming-live .bubble.assistant {
+.bubble-frame.assistant.streaming-live:not(.multi-bubble) .bubble.assistant {
   padding-bottom: 10px;
   transform: translateZ(0);
 }
 .msg-row[data-row-state='entering'] .bubble { transform: none; }
+
+/* ── 多气泡：一条回复按段落拆成多个独立气泡 ────────────────────────────
+   只有真拆开时 frame 里才有多个孩子；单气泡时 gap 不产生任何效果。 */
+.bubble-frame.multi-bubble {
+  gap: 6px;
+}
+.bubble.assistant.bubble-segment {
+  animation: bubbleSegmentIn 220ms var(--ease-out) both;
+}
+@keyframes bubbleSegmentIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble.assistant.bubble-segment { animation: none; }
+}
+
+/* 气泡组末尾那一行时间。整组只出现一次，不跟着每个气泡重复——同一条回复里的
+   气泡本来就是同一刻产生的，逐条标时间只会堆满重复的同一分钟。 */
+.message-clock {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--text-soft) 74%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 删除这一轮：菜单里唯一带破坏性的动作，单独用警示色。 */
+.user-bubble-action-btn.danger {
+  color: color-mix(in srgb, var(--danger, #d9534f) 82%, var(--text-soft));
+}
+.user-bubble-action-btn.danger:hover,
+.user-bubble-action-btn.danger:focus-visible {
+  background: color-mix(in srgb, var(--danger, #d9534f) 14%, transparent);
+  color: var(--danger, #d9534f);
+}
+

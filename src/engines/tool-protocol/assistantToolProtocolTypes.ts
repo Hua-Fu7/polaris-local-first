@@ -58,6 +58,7 @@ export type PolarisToolPromptGroup =
   | 'desktop'
   | 'theme'
   | 'attachment'
+  | 'voice'
   | 'generation'
   | 'archive'
   | 'web'
@@ -67,7 +68,8 @@ export type PolarisToolPromptGroup =
   | 'memory'
   | 'memoryRecall'
   | 'memoryWrite'
-  | 'proactive';
+  | 'proactive'
+  | 'voiceCall';
 export type PolarisToolPromptPreferences = Partial<Record<PolarisToolPromptGroup, boolean>>;
 export type RunCodeSandboxProfile = 'safe' | 'experimental';
 
@@ -122,12 +124,20 @@ export type AssistantToolContext = {
       name: string;
       mimeType?: string;
     }>;
+    /** latest 是否来自本轮这条用户消息；false 表示是更早某轮发的历史附件。 */
+    latestFromCurrentTurn?: boolean;
     available: Array<{
       id: string;
       assetId?: string;
       kind: 'image' | 'file';
       name: string;
       mimeType?: string;
+    }>;
+  };  stickerSnapshot?: {
+    available: Array<{
+      id: string;
+      name: string;
+      tags: string[];
     }>;
   };
   imageAssetSnapshot?: {
@@ -161,12 +171,22 @@ export type AssistantToolContext = {
     calendarPermission?: string;
     platform?: string;
   };
+  calendarUnreadCount?: number;
 
   modelTier?: ModelTier;
   taskMode?: ConversationTaskMode;
   runCodeSandboxProfile?: RunCodeSandboxProfile;
   imageGenerationAvailable?: boolean;
   memorySearchAvailable?: boolean;
+  xinchaoContext?: {
+    consciousness: string;
+    revision: number;
+    drives: Array<{ key: string; label: string; value: number }>;
+    intent: { key: string; label: string; value: number } | null;
+    thoughts: Array<{ key: string; text: string; intensity: number }>;
+    lastInteraction: string;
+    lastConversationAt?: string;
+  };
   enabledToolGroups?: PolarisToolPromptPreferences;
   themeToolMode?: ThemeToolMode;
   stableSurfaceSnapshots?: StableSurfaceSnapshot[];

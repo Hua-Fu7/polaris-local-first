@@ -73,7 +73,9 @@ describe('resolveProviderCapability', () => {
       }
     }));
 
-    expect(capability.tools.choiceControl).toBe('none');
+    // 思考模型支持 tool_choice: auto（默认），但思考模式下不支持 required（会 400），
+    // 所以 choiceControl 是 'auto' 而非 'required'。
+    expect(capability.tools.choiceControl).toBe('auto');
     expect(capability.thinking).toEqual({
       sendBudget: false,
       effortMapping: 'none'

@@ -27,7 +27,13 @@ public class NativeProviderHttpPlugin extends Plugin {
         String requestId = call.getString("requestId");
         String urlText = call.getString("url");
         String body = call.getString("body");
-        if (requestId == null || requestId.isEmpty() || urlText == null || urlText.isEmpty() || body == null) {
+        // Binary uploads (audio transcription) arrive base64-encoded because the
+        // bridge only carries strings; contentType is set explicitly for them.
+        String bodyBase64 = call.getString("bodyBase64");
+        String contentType = call.getString("contentType");
+        boolean hasBinaryBody = bodyBase64 != null && !bodyBase64.isEmpty();
+        if (requestId == null || requestId.isEmpty() || urlText == null || urlText.isEmpty()
+                || (body == null && !hasBinaryBody)) {
             call.reject("模型请求参数不完整。");
             return;
         }
@@ -39,7 +45,8 @@ public class NativeProviderHttpPlugin extends Plugin {
                 call.reject("模型请求地址不正确。");
                 return;
             }
-            ProviderRequest request = new ProviderRequest(requestId, url, call.getObject("headers"), body, call);
+            ProviderRequest request = new ProviderRequest(
+                requestId, url, call.getObject("headers"), body, bodyBase64, contentType, call);
             ProviderRequest previous = requests.put(requestId, request);
             if (previous != null) previous.cancel();
             executor.execute(request);
@@ -72,16 +79,28 @@ public class NativeProviderHttpPlugin extends Plugin {
         private final URL url;
         private final JSObject headers;
         private final String body;
+        private final String bodyBase64;
+        private final String contentType;
         private final PluginCall startCall;
         private volatile boolean cancelled = false;
         private volatile boolean responseResolved = false;
         private volatile HttpURLConnection connection;
 
-        ProviderRequest(String requestId, URL url, JSObject headers, String body, PluginCall startCall) {
+        ProviderRequest(
+            String requestId,
+            URL url,
+            JSObject headers,
+            String body,
+            String bodyBase64,
+            String contentType,
+            PluginCall startCall
+        ) {
             this.requestId = requestId;
             this.url = url;
             this.headers = headers == null ? new JSObject() : headers;
             this.body = body;
+            this.bodyBase64 = bodyBase64;
+            this.contentType = contentType;
             this.startCall = startCall;
         }
 
@@ -94,7 +113,17 @@ public class NativeProviderHttpPlugin extends Plugin {
                 http.setDoOutput(true);
                 http.setConnectTimeout(0);
                 http.setReadTimeout(0);
-                byte[] requestBody = body.getBytes(StandardCharsets.UTF_8);
+                byte[] requestBody;
+                if (bodyBase64 != null && !bodyBase64.isEmpty()) {
+                    requestBody = Base64.decode(bodyBase64, Base64.DEFAULT);
+                    if (contentType != null && !contentType.isEmpty()) {
+                        http.setRequestProperty("Content-Type", contentType);
+                    }
+                } else {
+                    requestBody = body == null
+                        ? new byte[0]
+                        : body.getBytes(StandardCharsets.UTF_8);
+                }
                 http.setFixedLengthStreamingMode(requestBody.length);
                 Iterator<String> headerKeys = headers.keys();
                 while (headerKeys.hasNext()) {

@@ -431,7 +431,7 @@ describe('buildApiRequest tool choice', () => {
     expect(request.body.tool_choice).toBe('auto');
   });
 
-  it('omits tool choice on DeepSeek reasoning routes', () => {
+  it('downgrades required tool choice to auto on DeepSeek reasoning routes', () => {
     const request = buildApiRequest({
       api: createProvider({
         id: 'deepseek',
@@ -448,7 +448,8 @@ describe('buildApiRequest tool choice', () => {
     });
 
     expect(request.body.tools).toBeDefined();
-    expect(request.body).not.toHaveProperty('tool_choice');
+    // DeepSeek 思考模型支持 tool_choice，但不支持 required（会 400），所以降级成 auto。
+    expect(request.body.tool_choice).toBe('auto');
   });
 
   it('returns DeepSeek thinking history as reasoning_content for tool follow-up requests', () => {
@@ -477,10 +478,11 @@ describe('buildApiRequest tool choice', () => {
       reasoning_content: '先判断主题工具是否已经写入，再决定下一轮怎么改。'
     });
     expect(request.body.thinking).toBeUndefined();
+    // 这个 context 没设 toolChoice，所以请求里也没有 tool_choice——和 provider 无关。
     expect(request.body).not.toHaveProperty('tool_choice');
   });
 
-  it('omits auto tool choice on DeepSeek reasoning routes', () => {
+  it('keeps auto tool choice on DeepSeek reasoning routes', () => {
     const request = buildApiRequest({
       api: createProvider({
         id: 'deepseek',
@@ -497,7 +499,7 @@ describe('buildApiRequest tool choice', () => {
     });
 
     expect(request.body.tools).toBeDefined();
-    expect(request.body).not.toHaveProperty('tool_choice');
+    expect(request.body.tool_choice).toBe('auto');
   });
 
   it('downgrades required tool choice on Moonshot Kimi routes', () => {

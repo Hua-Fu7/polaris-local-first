@@ -16,8 +16,12 @@ export type IconName =
   | 'navCard'
   | 'navWorkspace'
   | 'navImage'
+  | 'heart'
+  | 'sticker'
   | 'navGroup'
   | 'navInfo'
+  | 'navCalendar'
+  | 'heatGrid'
   | 'edit'
   | 'refresh'
   | 'more'
@@ -26,6 +30,8 @@ export type IconName =
   | 'chevron'
   | 'chevronDown'
   | 'chevronUp'
+  | 'arrowUpRight'
+  | 'archiveBox'
   | 'lighthouse'
   | 'layers'
   | 'x'
@@ -44,6 +50,7 @@ export type IconName =
   | 'cardStack'
   | 'infoCard'
   | 'wand'
+  | 'tool'
   | 'orbit'
   | 'task'
   | 'sun'
@@ -72,7 +79,14 @@ export type IconName =
   | 'inbox'
   | 'feather'
   | 'zap'
-  | 'compass';
+  | 'compass'
+  | 'hangup'
+  | 'answer'
+  | 'speaker'
+  | 'mic'
+  | 'micOff'
+  | 'keyboard'
+  | 'clock';
 
 type Props = {
   name: IconName;
@@ -259,6 +273,20 @@ export function Icon({ name, size = 18, color = 'currentColor' }: Props) {
         </>
       )}
     </>,
+    sticker: <>
+      <rect x="4.6" y="4.6" width="14.8" height="14.8" rx="4.1" fill="none" stroke={color} strokeWidth={strokeSoft} />
+      <circle cx="9.2" cy="10" r="1.05" fill={color} />
+      <circle cx="14.8" cy="10" r="1.05" fill={color} />
+      <path d="M8.3 13.25C9.15 14.45 10.4 15.05 12 15.05C13.6 15.05 14.85 14.45 15.7 13.25" fill="none" stroke={color} strokeWidth={strokeSoft} strokeLinecap="round" />
+      <path d="M18.1 17.5L20 20" fill="none" stroke={color} strokeWidth={strokeDetail} strokeLinecap="round" opacity="0.58" />
+    </>,
+    heart: <>
+      {navActive ? (
+        <path d="M12 20.1S4.8 15.55 4.8 10.45C4.8 7.75 6.72 5.8 9.05 5.8c1.15 0 2.2.52 2.95 1.43.75-.91 1.8-1.43 2.95-1.43 2.33 0 4.25 1.95 4.25 4.65 0 5.1-7.2 9.65-7.2 9.65Z" fill={navFill} />
+      ) : (
+        <path d="M12 20.1S4.8 15.55 4.8 10.45C4.8 7.75 6.72 5.8 9.05 5.8c1.15 0 2.2.52 2.95 1.43.75-.91 1.8-1.43 2.95-1.43 2.33 0 4.25 1.95 4.25 4.65 0 5.1-7.2 9.65-7.2 9.65Z" fill="none" stroke={color} strokeWidth={strokeBold} strokeLinejoin="round" />
+      )}
+    </>,
     navGroup: <>
       {navDefs}
       {navActive ? (
@@ -296,7 +324,31 @@ export function Icon({ name, size = 18, color = 'currentColor' }: Props) {
         </>
       )}
     </>,
-    edit: <><path d="M5 19L5.5 15.5L15.2 5.8C15.9 5.1 17 5.1 17.7 5.8L18.2 6.3C18.9 7 18.9 8.1 18.2 8.8L8.5 18.5L5 19Z" fill="none" stroke={color} strokeWidth={stroke} strokeLinejoin="round"/><line x1="13.8" y1="7.2" x2="16.8" y2="10.2" stroke={color} strokeWidth={stroke} strokeLinecap="round"/></>,
+    navCalendar: <>
+      {navActive ? (
+        <>
+          <rect x="4.2" y="5.2" width="15.6" height="14.8" rx="3" fill={navFill} />
+          <path d="M7.2 3.8V7" stroke={navDetail} strokeWidth={strokeBold} strokeLinecap="round" />
+          <path d="M16.8 3.8V7" stroke={navDetail} strokeWidth={strokeBold} strokeLinecap="round" />
+          <path d="M4.2 9.4H19.8" stroke={navSoftDetail} strokeWidth={strokeSoft} />
+          <circle cx="8.2" cy="13" r="1.1" fill={navDetail} />
+          <circle cx="12" cy="13" r="1.1" fill={navDetail} />
+          <circle cx="15.8" cy="13" r="1.1" fill={navDetail} />
+          <circle cx="8.2" cy="16.5" r="1.1" fill={navSoftDetail} />
+          <circle cx="12" cy="16.5" r="1.1" fill={navSoftDetail} />
+        </>
+      ) : (
+        <>
+          <rect x="4.2" y="5.2" width="15.6" height="14.8" rx="3" fill="none" stroke={color} strokeWidth={strokeBold} />
+          <path d="M7.2 3.8V7" stroke={color} strokeWidth={strokeSoft} strokeLinecap="round" />
+          <path d="M16.8 3.8V7" stroke={color} strokeWidth={strokeSoft} strokeLinecap="round" />
+          <path d="M4.2 9.4H19.8" stroke={color} strokeWidth={strokeSoft} />
+          <circle cx="8.2" cy="13" r="1" fill="none" stroke={color} strokeWidth={strokeSoft} />
+          <circle cx="12" cy="13" r="1" fill="none" stroke={color} strokeWidth={strokeSoft} />
+          <circle cx="15.8" cy="13" r="1" fill="none" stroke={color} strokeWidth={strokeSoft} />
+        </>
+      )}
+    </>,    edit: <><path d="M5 19L5.5 15.5L15.2 5.8C15.9 5.1 17 5.1 17.7 5.8L18.2 6.3C18.9 7 18.9 8.1 18.2 8.8L8.5 18.5L5 19Z" fill="none" stroke={color} strokeWidth={stroke} strokeLinejoin="round"/><line x1="13.8" y1="7.2" x2="16.8" y2="10.2" stroke={color} strokeWidth={stroke} strokeLinecap="round"/></>,
     refresh: <><path d="M19 8.5A7 7 0 1 0 20 14" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"/><polyline points="15,4.5 19.5,8.5 14.5,11" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round"/></>,
     more: <><circle cx="6.5" cy="12" r="1.25" fill={color}/><circle cx="12" cy="12" r="1.25" fill={color}/><circle cx="17.5" cy="12" r="1.25" fill={color}/></>,
     branch: <><circle cx="7" cy="6.5" r="2" fill="none" stroke={color} strokeWidth={stroke}/><circle cx="17" cy="6.5" r="2" fill="none" stroke={color} strokeWidth={stroke}/><circle cx="12" cy="18" r="2" fill="none" stroke={color} strokeWidth={stroke}/><path d="M7 8.5V10C7 11.4 8.1 12.5 9.5 12.5H14.5C15.9 12.5 17 11.4 17 10V8.5" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"/><path d="M12 12.5V16" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"/></>,
@@ -304,6 +356,8 @@ export function Icon({ name, size = 18, color = 'currentColor' }: Props) {
     chevron: <><polyline points="9,6 15,12 9,18" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round"/></>,
     chevronDown: <><polyline points="6,9 12,15 18,9" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round"/></>,
     chevronUp: <><polyline points="6,15 12,9 18,15" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round"/></>,
+    arrowUpRight: <><line x1="7" y1="17" x2="17" y2="7" stroke={color} strokeWidth={stroke} strokeLinecap="round"/><polyline points="9,7 17,7 17,15" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round"/></>,
+    archiveBox: <><line x1="6.5" y1="4" x2="17.5" y2="4" stroke={color} strokeWidth={stroke} strokeLinecap="round"/><path d="M4.6 7.5h14.8l-1.9 11.1a2 2 0 0 1-2 1.7H8.5a2 2 0 0 1-2-1.7L4.6 7.5Z" fill="none" stroke={color} strokeWidth={stroke} strokeLinejoin="round"/></>,
     check: <><polyline points="5.5,12.5 10,17 18.5,8.5" fill="none" stroke={color} strokeWidth={strokeBold} strokeLinecap="round" strokeLinejoin="round"/></>,
     lighthouse: <><path d="M12 2L14 8H10L12 2Z" fill="none" stroke={color} strokeWidth={stroke} strokeLinejoin="round"/><rect x="9" y="8" width="6" height="10" rx="1" fill="none" stroke={color} strokeWidth={stroke}/><line x1="12" y1="18" x2="12" y2="22" stroke={color} strokeWidth={stroke}/><line x1="7" y1="22" x2="17" y2="22" stroke={color} strokeWidth={stroke} strokeLinecap="round"/><line x1="6" y1="5" x2="8" y2="5" stroke={color} strokeWidth={stroke} strokeLinecap="round"/><line x1="16" y1="5" x2="18" y2="5" stroke={color} strokeWidth={stroke} strokeLinecap="round"/></>,
     layers: <><polygon points="12,2 22,8.5 12,15 2,8.5" fill="none" stroke={color} strokeWidth={stroke} strokeLinejoin="round"/><polyline points="2,15 12,21.5 22,15" fill="none" stroke={color} strokeWidth={stroke} strokeLinejoin="round"/></>,
@@ -342,7 +396,10 @@ export function Icon({ name, size = 18, color = 'currentColor' }: Props) {
       <path d="M14.55 14.2L17.8 10.95C18.22 10.53 18.9 10.53 19.32 10.95L19.55 11.18C19.97 11.6 19.97 12.28 19.55 12.7L16.3 15.95L14.2 16.28L14.55 14.2Z" fill="none" stroke={color} strokeWidth={strokeDetail} strokeLinejoin="round" />
       <path d="M17.05 11.7L18.8 13.45" fill="none" stroke={color} strokeWidth="1.26" strokeLinecap="round" />
     </>,
-    wand: <>
+    tool: <>
+      <path d="M14.55 4.55A4.9 4.9 0 0 0 9.15 11.1L4.3 15.95A2.35 2.35 0 1 0 7.62 19.27L12.47 14.42A4.9 4.9 0 0 0 19.02 9.02L16.2 11.84L13.36 11.22L12.74 8.38L14.55 6.57C14.82 5.92 15.04 5.22 14.55 4.55Z" fill="none" stroke={color} strokeWidth={strokeSoft} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5.72 16.75L7.22 18.25" fill="none" stroke={color} strokeWidth={strokeDetail} strokeLinecap="round" opacity="0.72" />
+    </>,    wand: <>
       <g transform="translate(2.9 0.6) scale(0.226)">
         <rect x="20" y="68" width="72" height="8" rx="3" transform="rotate(-45 20 68)" fill={color} opacity="0.78"/>
         <rect x="20" y="68" width="18" height="8" rx="3" transform="rotate(-45 20 68)" fill={color} opacity="0.98"/>
@@ -686,6 +743,61 @@ export function Icon({ name, size = 18, color = 'currentColor' }: Props) {
       <polygon points="10,10 10.5,10.5 13.5,13.5 14,14" fill={color} fillOpacity="0.28"/>
       <polygon points="10,14 10.5,10.5 7,7" fill={color} fillOpacity="0.28"/>
     </>,
+    /*
+     * The handset flipped face-down, the universal "hang up" glyph. Filled
+     * rather than stroked so it stays legible as a white mark on the red key.
+     * The transform is only there to inset the 24x24 outline the glyph was
+     * drawn on; without it the receiver touches the edges of the box.
+     */
+    hangup: <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.7l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z" fill={color} transform="translate(1.6 2.1) scale(0.867)"/>,
+    /**
+     * The same handset as `hangup`, turned upright: on a call screen the two keys
+     * are the same object in two orientations, which is exactly how a phone reads.
+     */
+    answer: <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.7l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z" fill={color} transform="translate(1.6 2.1) scale(0.867) rotate(180 12 12)"/>,
+    speaker: <>
+      <path d="M4.3 9.5H7.1L11.5 5.5C12.2 4.86 13.28 5.37 13.28 6.32V17.68C13.28 18.63 12.2 19.14 11.5 18.5L7.1 14.5H4.3C3.63 14.5 3.1 13.97 3.1 13.3V10.7C3.1 10.03 3.63 9.5 4.3 9.5Z" fill="none" stroke={color} strokeWidth={strokeSoft} strokeLinejoin="round"/>
+      <path d="M16.15 9.3C17.15 10.5 17.15 13.5 16.15 14.7" fill="none" stroke={color} strokeWidth={strokeSoft} strokeLinecap="round"/>
+      <path d="M18.9 7C20.75 9.5 20.75 14.5 18.9 17" fill="none" stroke={color} strokeWidth={strokeDetail} strokeLinecap="round" opacity="0.68"/>
+    </>,
+    mic: <>
+      <rect x="9.1" y="3.4" width="5.8" height="11.1" rx="2.9" fill="none" stroke={color} strokeWidth={strokeSoft}/>
+      <path d="M5.9 11.6V12.3C5.9 15.67 8.63 18.4 12 18.4C15.37 18.4 18.1 15.67 18.1 12.3V11.6" fill="none" stroke={color} strokeWidth={strokeSoft} strokeLinecap="round"/>
+      <path d="M12 18.4V20.7" fill="none" stroke={color} strokeWidth={strokeSoft} strokeLinecap="round"/>
+    </>,
+    micOff: <>
+      <rect x="9.1" y="3.4" width="5.8" height="11.1" rx="2.9" fill="none" stroke={color} strokeWidth={strokeSoft} opacity="0.55"/>
+      <path d="M5.9 11.6V12.3C5.9 15.67 8.63 18.4 12 18.4C15.37 18.4 18.1 15.67 18.1 12.3V11.6" fill="none" stroke={color} strokeWidth={strokeSoft} strokeLinecap="round" opacity="0.55"/>
+      <path d="M12 18.4V20.7" fill="none" stroke={color} strokeWidth={strokeSoft} strokeLinecap="round"/>
+      <path d="M4.6 4.6L19.4 19.4" fill="none" stroke={color} strokeWidth={strokeBold} strokeLinecap="round"/>
+    </>,
+    /*
+     * 通话界面上的「改用打字」键：一块带按键点阵的键盘。
+     *
+     * 按键刻意画成零长度的圆头线段（`M6.4 9.8H6.4`），而不是 `<circle>` ——
+     * `stroke-linecap="round"` 会把它们渲染成干净的小圆点，尺寸也乖乖跟着
+     * strokeWidth 走，不用为每个键单独算坐标半径。
+     */
+    keyboard: <>
+      <rect x="2.9" y="6.4" width="18.2" height="11.2" rx="2.4" fill="none" stroke={color} strokeWidth={strokeSoft}/>
+      <path
+        d="M6.5 10.2H6.5M9.9 10.2H9.9M13.3 10.2H13.3M16.7 10.2H16.7M6.5 13H6.5M9.9 13H9.9M13.3 13H13.3M16.7 13H16.7M8.6 15.70H15.4"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeBold}
+        strokeLinecap="round"
+      />
+    </>,
+    clock: <>
+      <circle cx="12" cy="12" r="8.2" fill="none" stroke={color} strokeWidth={strokeSoft}/>
+      <path d="M12 7.35V12L15.35 13.95" fill="none" stroke={color} strokeWidth={strokeSoft} strokeLinecap="round" strokeLinejoin="round"/>
+    </>,
+    heatGrid: <>
+      <rect x="3.1" y="3.1" width="6.6" height="6.6" rx="1.7" fill={color} opacity="0.24"/>
+      <rect x="11.9" y="3.1" width="6.6" height="6.6" rx="1.7" fill={color} opacity="0.5"/>
+      <rect x="3.1" y="11.9" width="6.6" height="6.6" rx="1.7" fill={color} opacity="0.68"/>
+      <rect x="11.9" y="11.9" width="6.6" height="6.6" rx="1.7" fill={color} opacity="0.92"/>
+    </>,
   };
 
   return (
@@ -699,3 +811,4 @@ export function Icon({ name, size = 18, color = 'currentColor' }: Props) {
     </svg>
   );
 }
+

@@ -175,7 +175,8 @@ describe('resolveProviderProfile', () => {
     expect(profile.reasoningContentReplayPolicy).toBe('omit-empty');
     expect(profile.openAiToolHistoryReplayPolicy).toBe('native');
     expect(profile.sendThinkingBudget).toBe(false);
-    expect(profile.supportsToolChoice).toBe(false);
+    // DeepSeek 支持 tool_choice（auto 安全），但思考模型不支持 required。
+    expect(profile.supportsToolChoice).toBe(true);
     expect(profile.supportsRequiredToolChoice).toBe(false);
   });
 
@@ -193,8 +194,8 @@ describe('resolveProviderProfile', () => {
       protocol: 'openai-completions',
       model: 'deepseek-chat'
     })).toMatchObject({
-      supportsToolChoice: false,
-      supportsRequiredToolChoice: false
+      supportsToolChoice: true,
+      supportsRequiredToolChoice: true
     });
 
     expect(resolveProviderProfile({
